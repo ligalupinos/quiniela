@@ -46,6 +46,7 @@ input,select,textarea{font:inherit}
 .demo{background:var(--oro);color:var(--noche);text-align:center;font-size:12px;font-weight:700;padding:5px 10px}
 
 /* ---------- Navegación inferior ---------- */
+.aviso-version{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:60;max-width:560px;margin:0 auto;background:var(--noche);color:#fff;border:2px solid var(--oro);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--noche);border-top:2px solid var(--oro);
   display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
 .nav button{flex:1;max-width:200px;background:none;border:0;color:#9db5a5;padding:10px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
@@ -317,6 +318,9 @@ body.navidad .titulo span{color:#ffd23f}
    Pega aquí la URL de tu aplicación web de Apps Script (termina en /exec).
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
+/* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
+const VERSION_WEB = '2026-11-18.1';
+
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
 };
@@ -979,7 +983,7 @@ function adminJornadas() {
 function editorJornada() {
   const e = S.edJornada;
   let h = '<div class="card"><h2>' + (e.nueva ? 'Nueva jornada' : 'Editar J' + e.numero) + '</h2>'
-    + '<div class="rejilla2"><div class="campo"><label>Nº jornada (J)</label><input type="number" min="1" id="e-num" value="' + esc(e.numero) + '"' + (e.nueva ? '' : ' disabled') + '></div>'
+    + '<div class="rejilla2"><div class="campo"><label>Nº jornada (J)</label><input type="number" min="1" id="e-num" value="' + esc(e.numero) + '">' + (e.nueva ? '' : '<small class="muted">Si lo cambias, se mueven con ella sus partidos, resultados y pronósticos.</small>') + '</div>'
     + '<div class="campo"><label>Jornada oficial</label><input type="number" min="1" id="e-of" value="' + esc(e.oficial || '') + '" placeholder="Opcional"></div></div>'
     + '<div class="campo"><label>Cierre de pronósticos</label><input type="datetime-local" id="e-cierre" value="' + esc(toLocalInput(e.cierre)) + '"></div>'
     + '<label class="check"><input type="checkbox" id="e-anulada"' + (e.anulada ? ' checked' : '') + '> 🚫 Esta jornada no se juega (no cuenta para la clasificación)</label>'
@@ -1139,7 +1143,7 @@ function enlazarAdmin() {
     };
     app.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
       const j = S.adminDatos.jornadas.find(x => x.numero === Number(b.dataset.editar));
-      S.edJornada = { nueva: false, numero: j.numero, oficial: j.oficial, cierre: j.cierre, anulada: !!j.anulada, partidos: j.partidos.map(p => Object.assign({}, p)) };
+      S.edJornada = { nueva: false, numero: j.numero, numeroOriginal: j.numero, oficial: j.oficial, cierre: j.cierre, anulada: !!j.anulada, partidos: j.partidos.map(p => Object.assign({}, p)) };
       render();
     });
     app.querySelectorAll('[data-anular]').forEach(b => b.onclick = () => {
@@ -1286,10 +1290,31 @@ function enlazarEditorJornada() {
   $('#e-guardar').onclick = () => conCarga($('#e-guardar'), async () => {
     leerCampos();
     if (!e.cierre && !e.anulada) throw new Error('Pon la fecha y hora de cierre');
-    await api('guardarJornada', { token: S.admin, nueva: e.nueva, jornada: { numero: e.numero, oficial: e.oficial, cierre: e.cierre, anulada: e.anulada, partidos: e.partidos } });
+    if (!Number.isInteger(e.numero) || e.numero < 1) throw new Error('El número de jornada debe ser 1 o más');
+    const renumera = !e.nueva && e.numero !== e.numeroOriginal;
+    if (renumera && !confirm('¿Cambiar J' + e.numeroOriginal + ' a J' + e.numero + '?\n\nSus partidos, resultados y pronósticos pasan a la J' + e.numero + '.')) return;
+    await api('guardarJornada', { token: S.admin, nueva: e.nueva, numeroAnterior: e.nueva ? undefined : e.numeroOriginal, jornada: { numero: e.numero, oficial: e.oficial, cierre: e.cierre, anulada: e.anulada, partidos: e.partidos } });
     S.edJornada = null; S.jSel = e.numero;
-    await recargarAdmin(); render(); toast('Jornada J' + e.numero + ' guardada');
+    await recargarAdmin(); render(); toast(renumera ? 'J' + e.numeroOriginal + ' ahora es la J' + e.numero : 'Jornada J' + e.numero + ' guardada');
   });
+}
+
+/* ─────────────── Aviso de versión nueva ─────────────── */
+async function comprobarVersion() {
+  if (location.protocol === 'file:' || document.getElementById('aviso-version')) return;
+  try {
+    const t = await fetch(location.pathname + '?comprobar=' + Date.now(), { cache: 'no-store' }).then(r => (r.ok ? r.text() : ''));
+    const m = t.match(/VERSION_WEB = '(\d{4}-\d{2}-\d{2}\.\d+)'/);
+    if (m && m[1] !== VERSION_WEB) mostrarAvisoVersion();
+  } catch (e) { /* sin conexión: se vuelve a intentar más tarde */ }
+}
+function mostrarAvisoVersion() {
+  const d = document.createElement('div');
+  d.id = 'aviso-version';
+  d.className = 'aviso-version';
+  d.innerHTML = '<span>🔄 Hay una versión nueva de la web</span><button class="btn btn-oro btn-peq">Actualizar</button>';
+  d.querySelector('button').onclick = () => location.replace(location.pathname + '?v=' + Date.now());
+  document.body.appendChild(d);
 }
 
 function errorAdmin(err) {
@@ -1366,7 +1391,8 @@ function demoApi(accion, p) {
         if (d.id) { const g = DB.jugadores.find(x => x.id === d.id); Object.assign(g, { nombre: d.nombre, columna: d.columna, activo: d.activo }); if (d.pin) g.pin = d.pin; }
         else { if (!d.pin) throw new Error('Pon un PIN de 4 cifras para el jugador nuevo.'); DB.jugadores.push({ id: 'd' + Date.now(), nombre: d.nombre, columna: d.columna, activo: true, pin: d.pin }); }
         log('Jugador', '', d.nombre, d.id ? 'editado' : 'alta', 'admin'); return { ok: true }; }
-      case 'guardarJornada': { adm(); const d = p.jornada; const ex = DB.jornadas.find(x => x.numero === d.numero); if (p.nueva && ex) throw new Error('Ya existe la jornada J' + d.numero + '.');
+      case 'guardarJornada': { adm(); const d = p.jornada; let ex = DB.jornadas.find(x => x.numero === d.numero); if (p.nueva && ex) throw new Error('Ya existe la jornada J' + d.numero + '.');
+        if (!p.nueva && p.numeroAnterior !== undefined && p.numeroAnterior !== d.numero) { if (ex) throw new Error('Ya existe la jornada J' + d.numero + '. Elige otro número.'); ex = jor(p.numeroAnterior); ex.numero = d.numero; log('Jornada', d.numero, '', 'renumerada: J' + p.numeroAnterior + ' → J' + d.numero, 'admin'); }
         if (ex) Object.assign(ex, { oficial: d.oficial, cierre: d.cierre, anulada: !!d.anulada, partidos: d.partidos }); else DB.jornadas.push({ numero: d.numero, oficial: d.oficial, cierre: d.cierre, anulada: !!d.anulada, partidos: d.partidos, resultados: new Array(15).fill(''), pronosticos: {} });
         log('Jornada', d.numero, '', ex ? 'editada' : 'creada', 'admin'); return { numero: d.numero }; }
       case 'borrarJornada': adm(); DB.jornadas = DB.jornadas.filter(j => j.numero !== p.numero); log('Jornada', p.numero, '', 'borrada', 'admin'); return { ok: true };
@@ -1462,6 +1488,10 @@ function aplicarTemporada() {
       .then(r => { S.propios = r.pronosticos || {}; if (S.vista === 'jornada') render(); })
       .catch(() => { S.sesion = null; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); pintarCabecera(); });
   }
+  // Aviso de versión nueva de la web (al abrirla, cada 10 minutos y al volver a la pestaña)
+  setTimeout(comprobarVersion, 8000);
+  setInterval(comprobarVersion, 600000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) comprobarVersion(); });
   // Cuenta atrás y refresco periódico
   setInterval(() => document.querySelectorAll('[data-cuenta]').forEach(el => { el.textContent = cuentaAtras(el.dataset.cuenta); }), 30000);
   setInterval(() => {
