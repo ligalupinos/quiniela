@@ -88,6 +88,8 @@ input,select,textarea{font:inherit}
 .menu-admin .estado{margin-top:auto;font-size:12px;font-weight:700;color:var(--cesped)}
 .titulo-admin{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff;margin-top:18px}
 .titulo-admin h2{margin:0;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:30px;letter-spacing:1px}
+.mi-rellenar{margin:2px 0 4px}
+.mi-cierre{margin:0 0 12px;text-align:center}
 .mi-acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 10px}
 .mi-acciones .btn{padding:9px 6px;font-size:12.5px;line-height:1.2}
 .mi-form{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:12px;margin-bottom:12px}
@@ -413,7 +415,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.9';
+const VERSION_WEB = '2026-11-18.10';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -622,6 +624,7 @@ function abrirPerfil(seccion) {
   const js = jornadasQueCuentan().filter(j => nRes(j));
   const jugs = jugadoresVisibles();
   const yo = js.length && jugs.some(g => g.id === id) ? clasificacionHasta(js, jugs).find(f => f.id === id) : null;
+  const abierta = S.datos.jornadas.find(j => !j.cerrada && !j.anulada && j.cierre && new Date(j.cierre) > new Date());
   const secciones = [['jornadas', '📅 Mis jornadas'], ['ficha', '📊 Estadísticas'], ['curiosidades', '🤓 Curiosidades']];
   let cuerpo = '';
   if (!js.length || !yo) cuerpo = '<p class="muted">Cuando termine tu primera jornada aquí verás tu historial, tus estadísticas y alguna curiosidad.</p>';
@@ -630,6 +633,8 @@ function abrirPerfil(seccion) {
   else cuerpo = curiosidadesHtml(id, js, jugs);
   abrirModal('<div class="modal-cab"><h2>👤 ' + esc(S.sesion.nombre) + '</h2><button class="cerrar">×</button></div>'
     + (yo ? '<div class="ficha-cab"><b>' + yo.pos + 'º</b><span>' + yo.total + ' puntos en la clasificación</span></div>' : '')
+    + (abierta ? '<button class="btn btn-oro btn-bloque mi-rellenar" id="mi-rellenar">' + (S.propios[abierta.numero] ? '✏️ Editar mi quiniela de la J' : '⚽ Rellenar la J') + abierta.numero + '</button>'
+      + '<p class="muted mi-cierre">' + (S.propios[abierta.numero] ? '✅ Ya la tienes enviada · ' : '') + 'Cierra en <b data-cuenta="' + esc(abierta.cierre) + '">' + cuentaAtras(abierta.cierre) + '</b></p>' : '')
     + '<div class="mi-acciones"><button class="btn btn-claro btn-peq" data-mi="nombre">✏️ Cambiar nombre</button><button class="btn btn-claro btn-peq" data-mi="pin">🔑 Cambiar PIN</button><button class="btn btn-claro btn-peq" data-mi="salir">🚪 Cerrar sesión</button></div>'
     + '<div id="mi-form"></div>'
     + '<div class="mi-tabs" role="tablist">' + secciones.map(t => '<button role="tab" aria-selected="' + (t[0] === seccion) + '" class="' + (t[0] === seccion ? 'activo' : '') + '" data-sec="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>'
@@ -638,6 +643,13 @@ function abrirPerfil(seccion) {
   capa.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => abrirPerfil(b.dataset.sec));
   capa.querySelectorAll('[data-ir-j]').forEach(tr => tr.onclick = () => { S.jSel = Number(tr.dataset.irJ); S.vista = 'jornada'; document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x.dataset.vista === 'jornada')); cerrarModal(); render(); window.scrollTo({ top: 0 }); });
   if (seccion === 'ficha') enlazarGrafica();
+  const br = $('#mi-rellenar');
+  if (br) br.onclick = () => {
+    S.jSel = abierta.numero; S.vista = 'jornada';
+    document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x.dataset.vista === 'jornada'));
+    cerrarModal(); render(); window.scrollTo({ top: 0 });
+    abrirRellenar();
+  };
   capa.querySelector('[data-mi="salir"]').onclick = () => { S.sesion = null; S.propios = {}; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); cerrarModal(); pintarCabecera(); render(); toast('Sesión cerrada'); };
   capa.querySelector('[data-mi="nombre"]').onclick = () => formPerfil('nombre');
   capa.querySelector('[data-mi="pin"]').onclick = () => formPerfil('pin');
@@ -982,10 +994,12 @@ function abrirLogin(alEntrar) {
       almacen.set('lupinos_sesion', S.sesion, !$('#l-rec').checked);
       pintarCabecera();
       cerrarModal();
-      if (!r.cambiarPin) toast('¡Hola, ' + r.jugador.nombre + '!');
+      if (!r.cambiarPin && alEntrar) toast('¡Hola, ' + r.jugador.nombre + '!');
       render();
-      if (r.cambiarPin) pedirPinPropio(alEntrar);
-      else if (alEntrar) alEntrar();
+      // Sin otra cosa pendiente, al entrar se abre el menú del jugador
+      const despues = alEntrar || (() => abrirPerfil('jornadas'));
+      if (r.cambiarPin) pedirPinPropio(despues);
+      else despues();
     });
   };
   $('#l-ok').onclick = entrar;
