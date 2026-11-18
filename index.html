@@ -396,7 +396,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.5';
+const VERSION_WEB = '2026-11-18.6';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -426,6 +426,7 @@ async function api(accion, params = {}) {
 
 async function cargarDatos() {
   S.datos = await api('datos');
+  if (!DEMO) almacen.set('lupinos_datos', S.datos);
   if (S.jSel == null || !S.datos.jornadas.find(j => j.numero === S.jSel)) S.jSel = jornadaActual();
   pintarCabecera();
 }
@@ -900,8 +901,10 @@ function selectorTemporadas() {
 }
 function cargarHistorico() {
   if (S.hist || S.cargandoHist) return;
+  // Mientras llega el histórico actualizado, se usa el de la última visita (cambia muy poco)
+  if (S.histGuardado) { S.hist = S.histGuardado; S.histGuardado = null; S.cargandoHist = true; api('historico').then(r => { S.hist = r; almacen.set('lupinos_historico', r); if (S.vista === 'clasificacion' && !$('#capa-modal').innerHTML) render(); }).catch(() => {}).finally(() => { S.cargandoHist = false; }); return; }
   S.cargandoHist = true;
-  api('historico').then(r => { S.hist = r; S.cargandoHist = false; if (S.vista === 'clasificacion') render(); })
+  api('historico').then(r => { S.hist = r; S.cargandoHist = false; if (!DEMO) almacen.set('lupinos_historico', r); if (S.vista === 'clasificacion') render(); })
     .catch(() => { S.cargandoHist = false; });
 }
 function puestos(clas) {
@@ -1582,7 +1585,7 @@ function haceCuanto(iso) {
 function cargarNoticias(forzar) {
   if (S.cargandoNoticias || (S.noticias && !forzar && Date.now() - S.noticias.cargadas < 10 * 60000)) return;
   S.cargandoNoticias = true;
-  api('noticias').then(r => { S.noticias = { lista: r.noticias || [], cargadas: Date.now() }; })
+  api('noticias').then(r => { S.noticias = { lista: r.noticias || [], cargadas: Date.now() }; if (!DEMO) almacen.set('lupinos_noticias', S.noticias.lista); })
     .catch(e => { if (!S.noticias) S.noticias = { lista: [], error: e.message, cargadas: Date.now() }; })
     .finally(() => { S.cargandoNoticias = false; if (S.vista === 'noticias') render(); });
 }
@@ -1831,9 +1834,28 @@ function aplicarTemporada() {
   setInterval(aplicarTemporada, 30000);
   S.sesion = almacen.get('lupinos_sesion') || almacen.get('lupinos_sesion', true);
   S.admin = almacen.get('lupinos_admin', true);
+  // Arranque rápido: se enseña al momento lo que se vio la última vez y se actualiza por detrás
+  const guardados = DEMO ? null : almacen.get('lupinos_datos');
+  if (!DEMO) {
+    const n = almacen.get('lupinos_noticias'); if (Array.isArray(n)) S.noticias = { lista: n, cargadas: 0 };
+    const h = almacen.get('lupinos_historico'); if (h && h.temporadas) S.histGuardado = h;
+  }
+  if (guardados && Array.isArray(guardados.jornadas)) {
+    try {
+      S.datos = guardados;
+      if (S.jSel == null || !S.datos.jornadas.find(j => j.numero === S.jSel)) S.jSel = jornadaActual();
+      pintarCabecera();
+      render();
+    } catch (e) { S.datos = null; }
+  }
   try {
-    await cargarDatos();
-    render();
+    if (S.datos) {
+      cargarDatos().then(() => { if (!$('#capa-modal').innerHTML && !(S.vista === 'admin' && S.edJornada)) render(); })
+        .catch(() => toast('Sin conexión: se muestran los últimos datos guardados', true));
+    } else {
+      await cargarDatos();
+      render();
+    }
   } catch (e) {
     $('#app').innerHTML = '<div class="card"><h2>No se pudo cargar</h2><div class="error">' + esc(e.message) + '</div><div class="acciones"><button class="btn btn-verde" onclick="location.reload()">Reintentar</button></div></div>';
     return;
