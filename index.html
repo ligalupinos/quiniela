@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1f14">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lupinos">
 <title>Liga Lupinos</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 3 58 12v20c0 15-11 25-26 29C17 57 6 47 6 32V12z' fill='%230b5d2a' stroke='%23f2c230' stroke-width='4'/%3E%3Ctext x='32' y='42' font-size='24' text-anchor='middle' fill='%23f2c230' font-family='Arial' font-weight='bold'%3ELL%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -74,6 +79,32 @@ input,select,textarea{font:inherit}
 .medios button{border:1px solid var(--linea);background:#fff;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--noche)}
 .medios button.activo{background:var(--oro);border-color:var(--oro)}
 @media(min-width:620px){.noticia img{width:140px;height:96px}}
+.premios{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.premio{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:10px 12px}
+.premio .ico{font-size:22px;line-height:1}
+.premio .tit{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--gris);margin-top:6px}
+.premio b{display:block;font-size:15px;color:var(--tinta);margin-top:2px}
+.premio small{display:block;font-size:12px;color:var(--gris);margin-top:2px}
+.premio.oro{border-color:#f1d27a;background:#fffaf0}
+.clasif tbody tr[data-ficha]{cursor:pointer}
+.clasif tbody tr[data-ficha] .nom:after{content:"›";color:var(--gris);margin-left:6px;font-weight:400}
+.ficha-cab{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-4px 0 12px;color:var(--gris);font-size:13px}
+.ficha-cab b{font-family:'Bebas Neue',Impact,sans-serif;font-size:30px;color:var(--tinta);letter-spacing:1px;font-weight:400}
+.datos-ficha{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.datos-ficha div{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:8px 10px}
+.datos-ficha span{display:block;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gris)}
+.datos-ficha b{display:block;font-family:'Bebas Neue',Impact,sans-serif;font-size:26px;font-weight:400;color:var(--tinta);line-height:1.1}
+.datos-ficha small{display:block;font-size:11.5px;color:var(--gris)}
+.grafica-puesto{position:relative;background:#fff;border:1px solid var(--linea);border-radius:14px;padding:8px 6px 4px}
+.grafica-puesto svg{display:block;width:100%;height:auto;overflow:visible}
+.grafica-puesto .tip{position:absolute;pointer-events:none;background:var(--noche);color:#fff;font-size:12px;font-weight:700;padding:4px 8px;border-radius:8px;transform:translate(-50%,-130%);white-space:nowrap;display:none}
+.reparto{display:flex;height:22px;border-radius:8px;overflow:hidden;gap:2px;margin:6px 0 4px}
+.reparto i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:800;color:#fff;min-width:0}
+.ficha-sec{margin-top:14px}
+.ficha-sec h4{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--gris)}
+.instalar{display:flex;align-items:center;gap:10px;background:var(--noche);color:#fff;border:1px solid rgba(242,194,48,.5);border-radius:14px;padding:10px 12px;margin:12px 0;font-size:14px;font-weight:600}
+.instalar span{flex:1}
+.instalar .x{background:none;border:0;color:#9db5a5;font-size:20px;line-height:1;padding:0 4px}
 .demo{background:var(--oro);color:var(--noche);text-align:center;font-size:12px;font-weight:700;padding:5px 10px}
 
 /* ---------- Navegación inferior ---------- */
@@ -356,7 +387,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.3';
+const VERSION_WEB = '2026-11-18.4';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -606,7 +637,7 @@ function vistaJornada() {
   datos += '<div class="dato"><span>Pronósticos</span><b>' + enviados + ' / ' + jugs.filter(g => g.activo).length + '</b></div>'
     + '<div class="dato"><span>Resultados</span><b>' + res + ' / 15</b><div class="progreso"><i style="width:' + (res / 15 * 100) + '%"></i></div></div>';
 
-  let html = chips + '<section class="marcador"><div class="fila"><div class="num"><small>JORNADA</small>' + j.numero + '</div><div style="flex:1"></div>' + estado + '</div>'
+  let html = avisoInstalar() + chips + '<section class="marcador"><div class="fila"><div class="num"><small>JORNADA</small>' + j.numero + '</div><div style="flex:1"></div>' + estado + '</div>'
     + '<div class="datos">' + datos + '</div>';
   if (!j.cerrada && !j.anulada) {
     const mio = S.sesion && S.propios[j.numero];
@@ -624,6 +655,7 @@ function vistaJornada() {
   } else {
     if (!j.cerrada && !j.anulada) html += tarjetaEnviados(j, jugs);
     const conPron = jugs.filter(g => j.pronosticos[g.id] !== undefined || g.activo);
+    if (finalizada && !j.anulada) html += tarjetaPremios(j);
     html += '<div class="card"><h3>Pronósticos</h3>' + barraResultados(j) + tablaBoleto(j, conPron) + leyenda(j) + botonWhatsApp(j) + '</div>';
   }
   return html;
@@ -961,9 +993,9 @@ function vistaClasificacionActual() {
       const d = f.antes - f.pos;
       flecha = d > 0 ? '<span class="flecha" style="color:var(--ok)">▲' + d + '</span>' : d < 0 ? '<span class="flecha" style="color:var(--ko)">▼' + (-d) + '</span>' : '';
     }
-    h += '<tr class="' + cls + '"><td>' + f.pos + 'º</td><td class="nom">' + esc(f.g.nombre) + ' ' + flecha + '</td><td class="pts">' + f.total + '</td><td>' + (f.ultima == null ? '–' : f.ultima) + '</td><td>' + (f.plenos || '–') + '</td></tr>';
+    h += '<tr class="' + cls + '" data-ficha="' + esc(f.g.id) + '" title="Ver la ficha de ' + esc(f.g.nombre) + '"><td>' + f.pos + 'º</td><td class="nom">' + esc(f.g.nombre) + ' ' + flecha + '</td><td class="pts">' + f.total + '</td><td>' + (f.ultima == null ? '–' : f.ultima) + '</td><td>' + (f.plenos || '–') + '</td></tr>';
   });
-  h += '</tbody></table><div class="leyenda"><span>🟩 Líder</span><span>🟥 Colista</span><span>P15 = Plenos al 15 acertados</span><span>⚖️ Empate a puntos: deciden los plenos al 15 y, si siguen empatados, quién ganó más jornadas a los otros empatados</span></div></div>';
+  h += '</tbody></table><div class="leyenda"><span>🟩 Líder</span><span>🟥 Colista</span><span>P15 = Plenos al 15 acertados</span><span>⚖️ Empate a puntos: deciden los plenos al 15 y, si siguen empatados, quién ganó más jornadas a los otros empatados</span><span>👆 Toca un jugador para ver su ficha</span></div></div>';
 
   // Matriz por jornadas
   const conRes = js.filter(j => nRes(j));
@@ -1135,6 +1167,13 @@ function enlazar() {
   if (br) br.onclick = abrirRellenar;
   const bw = $('#b-wa');
   if (bw) bw.onclick = () => enviarWhatsApp(bw);
+  const bp = $('#b-premios');
+  if (bp) bp.onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(mensajePremios(getJ(S.jSel))), '_blank');
+  const bi = $('#b-instalar');
+  if (bi) bi.onclick = instalarApp;
+  const bix = $('#b-instalar-x');
+  if (bix) bix.onclick = () => { almacen.set('lupinos_sin_instalar', 1); render(); };
+  if (S.vista === 'clasificacion' && S.histSel === 'actual') $('#app').querySelectorAll('tr[data-ficha]').forEach(tr => tr.onclick = () => abrirFicha(tr.dataset.ficha));
   const ba = $('#b-actualizar');
   if (ba) ba.onclick = () => actualizarResultadosWeb(ba);
   if (S.vista === 'noticias') $('#app').querySelectorAll('[data-medio]').forEach(b => b.onclick = () => { S.medio = b.dataset.medio; render(); });
@@ -1336,6 +1375,169 @@ function enlazarEditorJornada() {
     S.edJornada = null; S.jSel = e.numero;
     await recargarAdmin(); render(); toast(renumera ? 'J' + e.numeroOriginal + ' ahora es la J' + e.numero : 'Jornada J' + e.numero + ' guardada');
   });
+}
+
+/* ─────────────── Premios de la jornada ─────────────── */
+function premiosJornada(j) {
+  const jugs = jugadoresVisibles().filter(g => Array.isArray(j.pronosticos[g.id]));
+  if (!jugs.length) return null;
+  const pts = jugs.map(g => ({ g, p: puntos(j, g.id) }));
+  const max = Math.max(...pts.map(x => x.p)), min = Math.min(...pts.map(x => x.p));
+  const unicos = {};
+  for (let i = 0; i < 14; i++) {
+    const r = j.resultados[i];
+    if (!r) continue;
+    const acertantes = jugs.filter(g => j.pronosticos[g.id][i] === r);
+    if (acertantes.length === 1) (unicos[acertantes[0].id] = unicos[acertantes[0].id] || []).push(i);
+  }
+  return {
+    mejores: pts.filter(x => x.p === max), max,
+    peores: max !== min ? pts.filter(x => x.p === min) : [], min,
+    visionarios: Object.keys(unicos).map(id => ({ g: jugs.find(x => x.id === id), partidos: unicos[id] })),
+    plenos: jugs.filter(g => plenoAcertado(j, g.id))
+  };
+}
+function listaNombres(ns) { return ns.length > 1 ? ns.slice(0, -1).join(', ') + ' y ' + ns[ns.length - 1] : (ns[0] || ''); }
+function nombresPremio(lista) { return listaNombres(lista.map(x => x.nombre || (x.g && x.g.nombre))); }
+function partidoTexto(j, i) { const p = j.partidos[i] || {}; return (p.local || '') + '–' + (p.visitante || ''); }
+function tarjetaPremios(j) {
+  const pr = premiosJornada(j);
+  if (!pr) return '';
+  const caja = (ico, tit, quien, detalle, cls) => '<div class="premio ' + (cls || '') + '"><div class="ico">' + ico + '</div><div class="tit">' + tit + '</div><b>' + esc(quien) + '</b>' + (detalle ? '<small>' + esc(detalle) + '</small>' : '') + '</div>';
+  let h = '<div class="card"><h3>🏆 Premios de la J' + j.numero + '</h3><div class="premios">';
+  h += caja('🏅', 'Jugador de la jornada', nombresPremio(pr.mejores), pr.max + ' aciertos', 'oro');
+  if (pr.peores.length) h += caja('🔦', 'Farolillo rojo', nombresPremio(pr.peores), pr.min + ' aciertos');
+  h += pr.visionarios.length
+    ? caja('🔮', 'Visionario', nombresPremio(pr.visionarios), 'Único en acertar ' + pr.visionarios.map(v => v.partidos.map(i => partidoTexto(j, i)).join(', ')).join(' · '))
+    : caja('🔮', 'Visionario', 'Nadie', 'Ningún acierto en solitario');
+  h += caja('🎯', 'Pleno al 15', pr.plenos.length ? listaNombres(pr.plenos.map(g => g.nombre)) : 'Nadie', 'Resultado: ' + (j.resultados[14] || '–'));
+  return h + '</div><button class="btn btn-wa btn-bloque" id="b-premios">📣 Enviar premios por WhatsApp</button></div>';
+}
+function mensajePremios(j) {
+  const pr = premiosJornada(j);
+  const n = x => '*' + nombresPremio(x) + '*';
+  const l = ['🏆 *' + (S.datos.config.nombre || 'Liga Lupinos').toUpperCase() + ' · Premios J' + j.numero + '*', '',
+    '🏅 Jugador de la jornada: ' + n(pr.mejores) + ' (' + pr.max + ' aciertos)'];
+  if (pr.peores.length) l.push('🔦 Farolillo rojo: ' + n(pr.peores) + ' (' + pr.min + ' aciertos)');
+  l.push(pr.visionarios.length ? '🔮 Visionario: ' + pr.visionarios.map(v => '*' + v.g.nombre + '* (' + v.partidos.map(i => partidoTexto(j, i)).join(', ') + ')').join(' y ') : '🔮 Visionario: nadie acertó en solitario');
+  l.push('🎯 Pleno al 15 (' + (j.resultados[14] || '–') + '): ' + (pr.plenos.length ? '*' + pr.plenos.map(g => g.nombre).join('*, *') + '*' : 'nadie'));
+  l.push('', location.origin + location.pathname);
+  return l.join('\n');
+}
+
+/* ─────────────── Ficha de jugador ─────────────── */
+function clasificacionHasta(js, jugs) {
+  const filas = jugs.map(g => {
+    const por = js.map(j => puntos(j, g.id));
+    return { id: g.id, nombre: g.nombre, por, total: por.reduce((a, b) => a + (b || 0), 0), plenos: js.filter(j => plenoAcertado(j, g.id)).length };
+  });
+  return ordenarClasificacion(filas, f => f.nombre);
+}
+function graficaPuesto(serie, nJug) {
+  const W = 320, H = 150, iz = 26, de = 10, ar = 12, ab = 22;
+  const x = k => iz + (serie.length === 1 ? (W - iz - de) / 2 : k * (W - iz - de) / (serie.length - 1));
+  const y = p => ar + (nJug === 1 ? 0 : (p - 1) * (H - ar - ab) / (nJug - 1));
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Puesto en la clasificación después de cada jornada">';
+  const marcas = nJug <= 6 ? Array.from({ length: nJug }, (_, k) => k + 1) : [1, Math.ceil(nJug / 2), nJug];
+  marcas.forEach(p => { s += '<line x1="' + iz + '" x2="' + (W - de) + '" y1="' + y(p) + '" y2="' + y(p) + '" stroke="#e6ece7" stroke-width="1"/><text x="' + (iz - 6) + '" y="' + (y(p) + 4) + '" text-anchor="end" font-size="10" fill="#6b7a70">' + p + 'º</text>'; });
+  const paso = Math.max(1, Math.ceil(serie.length / 8));
+  serie.forEach((d, k) => { if (k % paso === 0 || k === serie.length - 1) s += '<text x="' + x(k) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#6b7a70">J' + d.j + '</text>'; });
+  s += '<polyline fill="none" stroke="#0b5d2a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' + serie.map((d, k) => x(k) + ',' + y(d.pos)).join(' ') + '"/>';
+  serie.forEach((d, k) => {
+    s += '<circle cx="' + x(k) + '" cy="' + y(d.pos) + '" r="4" fill="#0b5d2a" stroke="#fff" stroke-width="2"/>'
+      + '<circle class="hit" cx="' + x(k) + '" cy="' + y(d.pos) + '" r="14" fill="transparent" data-tip="J' + d.j + ' · ' + d.pos + 'º · ' + d.pts + ' pts"/>';
+  });
+  const u = serie[serie.length - 1];
+  s += '<text x="' + Math.min(x(serie.length - 1), W - de) + '" y="' + (y(u.pos) - 9) + '" text-anchor="end" font-size="11" font-weight="700" fill="#0f1d14">' + u.pos + 'º</text>';
+  return s + '</svg>';
+}
+function abrirFicha(id) {
+  const js = jornadasQueCuentan().filter(j => nRes(j));
+  const jugs = jugadoresVisibles();
+  const g = jugs.find(x => x.id === id);
+  if (!g || !js.length) return;
+  // Puesto después de cada jornada
+  const serie = js.map((j, k) => { const c = clasificacionHasta(js.slice(0, k + 1), jugs); const f = c.find(x => x.id === id); return { j: j.numero, pos: f.pos, pts: f.total }; });
+  const actual = serie[serie.length - 1];
+  // Jornadas jugadas por él
+  const suyas = js.filter(j => Array.isArray(j.pronosticos[id]));
+  const pts = suyas.map(j => ({ j: j.numero, p: puntos(j, id), mejor: Math.max(...jugs.map(o => puntos(j, o.id) || 0)) }));
+  const media = pts.length ? pts.reduce((a, b) => a + b.p, 0) / pts.length : 0;
+  const todas = [];
+  js.forEach(j => jugs.forEach(o => { const p = puntos(j, o.id); if (p !== null) todas.push(p); }));
+  const mediaGrupo = todas.length ? todas.reduce((a, b) => a + b, 0) / todas.length : 0;
+  const mejor = pts.reduce((a, b) => (!a || b.p > a.p ? b : a), null), peor = pts.reduce((a, b) => (!a || b.p < a.p ? b : a), null);
+  const ganadas = pts.filter(x => x.p === x.mejor).length;
+  // Racha: jornadas seguidas por encima de la media del grupo en esa jornada
+  let racha = 0, mejorRacha = 0;
+  js.forEach(j => {
+    const p = puntos(j, id);
+    const ps = jugs.map(o => puntos(j, o.id)).filter(v => v !== null);
+    const m = ps.reduce((a, b) => a + b, 0) / (ps.length || 1);
+    if (p !== null && p > m) { racha++; mejorRacha = Math.max(mejorRacha, racha); } else racha = 0;
+  });
+  // Cómo juega: reparto de 1 / X / 2 y partidos contra la mayoría
+  const cuenta = { '1': 0, 'X': 0, '2': 0 }, cuentaG = { '1': 0, 'X': 0, '2': 0 };
+  let contra = 0, contraOk = 0, total14 = 0;
+  js.forEach(j => {
+    jugs.forEach(o => { const p = j.pronosticos[o.id]; if (Array.isArray(p)) for (let i = 0; i < 14; i++) if (cuentaG[p[i]] !== undefined) cuentaG[p[i]]++; });
+    const p = j.pronosticos[id];
+    if (!Array.isArray(p)) return;
+    for (let i = 0; i < 14; i++) {
+      if (cuenta[p[i]] === undefined) continue;
+      cuenta[p[i]]++; total14++;
+      const mv = masVotado(j, i);
+      if (mv && mv.signos.length === 1 && mv.signos[0] !== p[i]) { contra++; if (j.resultados[i] && p[i] === j.resultados[i]) contraOk++; }
+    }
+  });
+  const pct = (c, t) => t ? Math.round(c / t * 100) : 0;
+  const tG = cuentaG['1'] + cuentaG['X'] + cuentaG['2'];
+  const barra = (c, t) => '<div class="reparto">' + [['1', '#0b5d2a'], ['X', '#8a6d00'], ['2', '#2b5f8a']].map(([s, col]) => { const v = pct(c[s], t); return v ? '<i style="flex:' + v + ';background:' + col + '">' + s + ' ' + v + '%</i>' : ''; }).join('') + '</div>';
+  const plenos = js.filter(j => plenoAcertado(j, id)).length;
+  const dato = (t, v, s) => '<div><span>' + t + '</span><b>' + v + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</div>';
+  abrirModal('<div class="modal-cab"><h2>' + esc(g.nombre) + '</h2><button class="cerrar">×</button></div>'
+    + '<div class="ficha-cab"><b>' + actual.pos + 'º</b><span>' + actual.pts + ' puntos · ' + suyas.length + ' jornadas jugadas</span></div>'
+    + '<div class="ficha-sec" style="margin-top:0"><h4>Puesto jornada a jornada</h4><div class="grafica-puesto" id="g-puesto">' + graficaPuesto(serie, jugs.length) + '<div class="tip"></div></div></div>'
+    + '<div class="datos-ficha">'
+    + dato('Media', media.toFixed(1).replace('.', ','), 'grupo: ' + mediaGrupo.toFixed(1).replace('.', ','))
+    + dato('Mejor', mejor ? mejor.p : '–', mejor ? 'J' + mejor.j : '')
+    + dato('Peor', peor ? peor.p : '–', peor ? 'J' + peor.j : '')
+    + dato('Ganadas', ganadas, ganadas === 1 ? 'jornada' : 'jornadas')
+    + dato('Racha', mejorRacha, 'seguidas sobre la media')
+    + dato('Plenos', plenos, 'al 15')
+    + '</div>'
+    + '<div class="ficha-sec"><h4>Cómo reparte sus signos</h4><p class="muted" style="margin:0">' + esc(g.nombre) + '</p>' + barra(cuenta, total14) + '<p class="muted" style="margin:6px 0 0">Media del grupo</p>' + barra(cuentaG, tG) + '</div>'
+    + '<div class="ficha-sec"><h4>Contra la mayoría</h4><p style="margin:0;font-size:14px">Ha ido contra lo que votó la mayoría en <b>' + contra + '</b> de ' + total14 + ' partidos (' + pct(contra, total14) + '%)'
+    + (contra ? ' y ha acertado <b>' + contraOk + '</b> (' + pct(contraOk, contra) + '%).' : '.') + '</p></div>');
+  const caja = $('#g-puesto'), tip = caja && caja.querySelector('.tip');
+  if (caja) caja.querySelectorAll('.hit').forEach(c => {
+    const ver = () => { const r = c.getBoundingClientRect(), b = caja.getBoundingClientRect(); tip.textContent = c.dataset.tip; tip.style.left = (r.left + r.width / 2 - b.left) + 'px'; tip.style.top = (r.top + r.height / 2 - b.top) + 'px'; tip.style.display = 'block'; };
+    c.addEventListener('mouseenter', ver); c.addEventListener('click', ver); c.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+/* ─────────────── Instalar como app ─────────────── */
+let pedirInstalar = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); pedirInstalar = e; if (S.datos && S.vista === 'jornada' && !S.edJornada) render(); });
+window.addEventListener('appinstalled', () => { pedirInstalar = null; almacen.set('lupinos_sin_instalar', 1); toast('📲 ¡Instalada! Ya la tienes en la pantalla de inicio'); });
+function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function yaInstalada() { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+function avisoInstalar() {
+  if (yaInstalada() || almacen.get('lupinos_sin_instalar') || !(pedirInstalar || esIOS())) return '';
+  return '<div class="instalar"><span>📲 Pon la Liga Lupinos en la pantalla de inicio del móvil, como una app</span><button class="btn btn-oro btn-peq" id="b-instalar">Instalar</button><button class="x" id="b-instalar-x" aria-label="No mostrar más">×</button></div>';
+}
+async function instalarApp() {
+  if (pedirInstalar) {
+    pedirInstalar.prompt();
+    const r = await pedirInstalar.userChoice.catch(() => null);
+    pedirInstalar = null;
+    if (r && r.outcome === 'accepted') almacen.set('lupinos_sin_instalar', 1);
+    render();
+    return;
+  }
+  abrirModal('<div class="modal-cab"><h2>📲 Instalar en el iPhone</h2><button class="cerrar">×</button></div>'
+    + '<ol style="padding-left:20px;line-height:1.7;margin:0 0 8px"><li>Abre esta web en <b>Safari</b>.</li><li>Toca el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li>'
+    + '<li>Elige <b>«Añadir a pantalla de inicio»</b> y pulsa <b>Añadir</b>.</li></ol><p class="muted">Aparecerá el escudo de la Liga Lupinos con tus apps y se abrirá a pantalla completa.</p>');
 }
 
 /* ─────────────── Noticias de Primera ─────────────── */
@@ -1613,6 +1815,8 @@ function aplicarTemporada() {
       .then(r => { S.propios = r.pronosticos || {}; if (S.vista === 'jornada') render(); })
       .catch(() => { S.sesion = null; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); pintarCabecera(); });
   }
+  // App instalable: service worker mínimo (solo para poder instalarla; no guarda nada en caché)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   // Banner de resultados en directo (cada minuto mientras la web está a la vista)
   actualizarDirecto();
   setInterval(actualizarDirecto, 60000);
