@@ -79,6 +79,15 @@ input,select,textarea{font:inherit}
 .medios button{border:1px solid var(--linea);background:#fff;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--noche)}
 .medios button.activo{background:var(--oro);border-color:var(--oro)}
 @media(min-width:620px){.noticia img{width:140px;height:96px}}
+.menu-admin{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.menu-admin button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--tiza);border:0;border-radius:var(--radio);box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;min-height:118px;cursor:pointer;color:var(--tinta);font:inherit}
+.menu-admin button:hover,.menu-admin button:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.menu-admin .ico{font-size:28px;line-height:1}
+.menu-admin b{font-size:16px;margin-top:4px}
+.menu-admin small{font-size:12.5px;color:var(--gris);line-height:1.35}
+.menu-admin .estado{margin-top:auto;font-size:12px;font-weight:700;color:var(--cesped)}
+.titulo-admin{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff;margin-top:18px}
+.titulo-admin h2{margin:0;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:30px;letter-spacing:1px}
 .premios{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
 .premio{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:10px 12px}
 .premio .ico{font-size:22px;line-height:1}
@@ -387,14 +396,14 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.4';
+const VERSION_WEB = '2026-11-18.5';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
 };
 
 const DEMO = !CONFIG.API_URL;
-const S = { datos: null, vista: 'jornada', jSel: null, sesion: null, propios: {}, admin: null, adminDatos: null, adminTab: 'jornadas', edJornada: null, resSel: null, pronSel: { j: null, jug: null }, hist: null, histSel: 'actual', histJ: {}, histJSel: null };
+const S = { datos: null, vista: 'jornada', jSel: null, sesion: null, propios: {}, admin: null, adminDatos: null, adminTab: 'inicio', edJornada: null, resSel: null, pronSel: { j: null, jug: null }, hist: null, histSel: 'actual', histJ: {}, histJSel: null };
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const almacen = {
@@ -599,6 +608,7 @@ function abrirPerfil() {
 $('#nav').addEventListener('click', e => {
   const b = e.target.closest('button[data-vista]');
   if (!b) return;
+  if (b.dataset.vista === 'admin') { S.adminTab = 'inicio'; S.edJornada = null; }
   S.vista = b.dataset.vista;
   document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x === b));
   render();
@@ -1020,10 +1030,29 @@ function vistaAdmin() {
       + (DEMO ? '<p class="muted">En el modo demo la contraseña es <b>lupinos</b>.</p>' : '') + '</div>';
   }
   if (!S.adminDatos) return '<div class="cargando">Cargando…</div>';
-  const tabs = [['jornadas', '📅 Jornadas'], ['resultados', '🏁 Resultados'], ['jugadores', '👥 Jugadores'], ['pronosticos', '📝 Pronósticos'], ['ajustes', '⚙️ Ajustes'], ['registro', '🕓 Registro']];
+  const tabs = [['inicio', '🏠 Menú'], ['jornadas', '📅 Jornadas'], ['resultados', '🏁 Resultados'], ['jugadores', '👥 Jugadores'], ['pronosticos', '📝 Pronósticos'], ['ajustes', '⚙️ Ajustes'], ['registro', '🕓 Registro']];
+  if (S.adminTab === 'inicio') return menuAdmin();
   let h = '<div class="pestanas">' + tabs.map(t => '<button class="pestana' + (S.adminTab === t[0] ? ' activo' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
   h += ({ jornadas: adminJornadas, resultados: adminResultados, jugadores: adminJugadores, pronosticos: adminPronosticos, ajustes: adminAjustes, registro: adminRegistro })[S.adminTab]();
   return h;
+}
+
+function menuAdmin() {
+  const d = S.adminDatos, js = d.jornadas || [];
+  const abierta = js.find(j => !j.cerrada && !j.anulada);
+  const pendiente = js.filter(j => j.cerrada && !j.anulada && nRes(j) < 15).sort((a, b) => b.numero - a.numero)[0];
+  const activos = (d.jugadores || []).filter(g => g.activo).length;
+  const zonas = [
+    ['jornadas', '📅', 'Jornadas', 'Crear, editar, cerrar o abrir jornadas', abierta ? 'J' + abierta.numero + ' abierta' : 'Ninguna abierta'],
+    ['resultados', '🏁', 'Resultados', 'Meter o buscar los resultados de los partidos', pendiente ? 'J' + pendiente.numero + ': ' + nRes(pendiente) + '/15' : 'Todo al día'],
+    ['jugadores', '👥', 'Jugadores', 'Altas, nombres, PIN y quién juega', activos + ' activos'],
+    ['pronosticos', '📝', 'Pronósticos', 'Ver, corregir o borrar el boleto de un jugador', ''],
+    ['ajustes', '⚙️', 'Ajustes', 'Nombre, temporada, contraseña y archivar temporada', ''],
+    ['registro', '🕓', 'Registro', 'Últimos cambios hechos en la web', '']
+  ];
+  return '<div class="titulo-admin"><h2>Administración</h2></div><div class="menu-admin">'
+    + zonas.map(z => '<button data-tab="' + z[0] + '"><span class="ico">' + z[1] + '</span><b>' + z[2] + '</b><small>' + z[3] + '</small>' + (z[4] ? '<span class="estado">' + esc(z[4]) + '</span>' : '') + '</button>').join('')
+    + '</div>';
 }
 
 async function recargarAdmin() {
@@ -1209,7 +1238,7 @@ function enlazarAdmin() {
     recargarAdmin().then(render).catch(errorAdmin);
     return;
   }
-  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.adminTab = b.dataset.tab; S.edJornada = null; render(); });
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.adminTab = b.dataset.tab; S.edJornada = null; render(); window.scrollTo({ top: 0 }); });
 
   const tab = S.adminTab;
   if (tab === 'jornadas') {
