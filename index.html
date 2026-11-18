@@ -43,6 +43,25 @@ input,select,textarea{font:inherit}
 .subtitulo{font-size:12px;opacity:.75;letter-spacing:.5px;margin-top:2px}
 .cabecera .espacio{flex:1}
 .chip-sesion{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.directo{display:flex;align-items:stretch;height:28px;background:rgba(0,0,0,.32);border-top:1px solid rgba(242,194,48,.35);font-size:12.5px;overflow:hidden}
+.directo[hidden]{display:none}
+.directo-etq{flex:none;display:flex;align-items:center;gap:6px;padding:0 9px;background:#3b4a40;color:#fff;font-weight:800;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase}
+.directo-etq.vivo{background:#c8102e}
+.directo-etq.vivo:before{content:"";width:7px;height:7px;border-radius:50%;background:#fff;animation:latido 1.2s ease-in-out infinite}
+@keyframes latido{50%{opacity:.25}}
+.directo-vent{flex:1;overflow:hidden;display:flex;align-items:center;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent)}
+.directo-pista{display:inline-flex;white-space:nowrap;animation:desliza var(--dur,60s) linear infinite;will-change:transform}
+.directo-vent:hover .directo-pista,.directo-vent:active .directo-pista{animation-play-state:paused}
+@keyframes desliza{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.dx{display:inline-flex;align-items:center;gap:6px;padding:0 14px;color:#dfe9e2;border-right:1px solid rgba(255,255,255,.14)}
+.dx .n{font-size:10px;font-weight:700;opacity:.55}
+.dx .mar{font-family:'Bebas Neue',Impact,sans-serif;font-size:17px;letter-spacing:1px;color:#fff;line-height:1}
+.dx.in .mar{color:var(--oro)}
+.dx .min{font-size:10.5px;font-weight:800;color:#ff7a7a}
+.dx.post .min{color:#9db5a5;font-weight:700}
+.dx.pre .min{color:#9db5a5;font-weight:600}
+.dx .dsig{font-size:10.5px;font-weight:800;background:rgba(242,194,48,.18);color:var(--oro);border-radius:4px;padding:1px 5px}
+@media(prefers-reduced-motion:reduce){.directo-vent{overflow-x:auto}.directo-pista{animation:none}}
 .demo{background:var(--oro);color:var(--noche);text-align:center;font-size:12px;font-weight:700;padding:5px 10px}
 
 /* ---------- Navegación inferior ---------- */
@@ -294,6 +313,10 @@ body.navidad .titulo span{color:#ffd23f}
     <div class="espacio"></div>
     <button class="chip-sesion" id="chip-sesion" hidden></button>
   </div>
+  <div class="directo" id="directo" hidden aria-label="Resultados en directo de la jornada">
+    <span class="directo-etq" id="directo-etq">Resultados</span>
+    <div class="directo-vent"><div class="directo-pista" id="directo-pista"></div></div>
+  </div>
 </header>
 
 <main class="contenedor" id="app">
@@ -319,7 +342,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.1';
+const VERSION_WEB = '2026-11-18.2';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -1299,6 +1322,45 @@ function enlazarEditorJornada() {
   });
 }
 
+/* ─────────────── Banner de resultados en directo ─────────────── */
+function textoDirecto(p) {
+  const sig = (p.gl === null || p.gl === undefined || p.gv === null || p.gv === undefined) ? '' : (p.gl > p.gv ? '1' : p.gl < p.gv ? '2' : 'X');
+  if (p.estado === 'in' || p.estado === 'post') {
+    const min = p.estado === 'post' ? 'Final' : (/^HT$|half/i.test(p.detalle) ? 'Desc.' : (p.detalle || 'En juego'));
+    return { cls: p.estado, marcador: esc(p.local) + ' <span class="mar">' + p.gl + '-' + p.gv + '</span> ' + esc(p.visitante), min, sig };
+  }
+  if (p.resultado) return { cls: 'post', marcador: esc(p.local) + ' – ' + esc(p.visitante), min: 'Final', sig: p.resultado };
+  const d = p.inicio ? new Date(p.inicio) : null;
+  const min = d && !isNaN(d) ? d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '') + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+  return { cls: 'pre', marcador: esc(p.local) + ' – ' + esc(p.visitante), min, sig: '' };
+}
+function pintarDirecto(r) {
+  const caja = $('#directo');
+  const empezado = r && r.partidos && r.partidos.some(p => p.estado === 'in' || p.estado === 'post' || p.resultado);
+  if (!empezado) { caja.hidden = true; return; }
+  const vivo = r.partidos.some(p => p.estado === 'in');
+  const etq = $('#directo-etq');
+  etq.className = 'directo-etq' + (vivo ? ' vivo' : '');
+  etq.textContent = vivo ? 'En directo' : 'J' + r.numero;
+  const items = r.partidos.map(p => {
+    const t = textoDirecto(p);
+    return '<span class="dx ' + t.cls + '"><span class="n">' + (p.pos === 15 ? 'P15' : p.pos) + '</span>' + t.marcador
+      + (t.min ? ' <span class="min">' + esc(t.min) + '</span>' : '') + (t.sig ? ' <span class="dsig">' + esc(t.sig) + '</span>' : '') + '</span>';
+  }).join('');
+  const pista = $('#directo-pista');
+  if (pista.dataset.html !== items) {
+    pista.dataset.html = items;
+    pista.innerHTML = items + items;  // dos copias para que el bucle no se corte
+    caja.hidden = false;
+    requestAnimationFrame(() => pista.style.setProperty('--dur', Math.max(20, Math.round(pista.scrollWidth / 2 / 45)) + 's'));
+  }
+  caja.hidden = false;
+}
+async function actualizarDirecto() {
+  if (document.hidden) return;
+  try { pintarDirecto(await api('enDirecto')); } catch (e) { /* si falla, se reintenta en el siguiente minuto */ }
+}
+
 /* ─────────────── Aviso de versión nueva ─────────────── */
 async function comprobarVersion() {
   if (location.protocol === 'file:' || document.getElementById('aviso-version')) return;
@@ -1422,6 +1484,14 @@ function demoApi(accion, p) {
         DB.jornadas = []; DB.jugadores.forEach(g => { g.activo = (p.siguen || []).includes(g.id); });
         if (p.nuevaTemporada) DB.config.temporada = p.nuevaTemporada;
         log('Temporada', '', '', 'archivada ' + p.nombre, 'admin'); return { id, nombre: p.nombre, jornadas: jornadas.length, campeon: clasificacion[0] || null }; }
+      case 'enDirecto': {
+        const j = DB.jornadas.slice().sort((a, b) => b.numero - a.numero).find(x => !x.anulada && x.partidos.some(pp => pp.local));
+        if (!j) return { numero: null, partidos: [] };
+        const ahora = Date.now();
+        return { numero: j.numero, partidos: j.partidos.map((pp, i) => ({ pos: i + 1, local: pp.local, visitante: pp.visitante, resultado: '',
+          estado: i < 5 ? 'post' : i < 8 ? 'in' : 'pre', gl: i < 8 ? (i * 7) % 4 : null, gv: i < 8 ? (i * 3) % 3 : null,
+          detalle: i < 5 ? 'FT' : i === 6 ? 'HT' : (30 + i * 7) + "'", inicio: new Date(ahora + (i - 7) * 3600e3).toISOString() })) };
+      }
       case 'marcarNoJugada': adm(); jor(p.numero).anulada = !!p.anulada; log('Jornada', p.numero, '', p.anulada ? 'marcada como NO SE JUEGA' : 'vuelve a contar', 'admin'); return { ok: true };
       case 'buscarResultados': adm(); throw new Error('En el modo demo no se consulta la web de Loterías.');
       case 'cargarBoleto': adm(); throw new Error('En el modo demo no se consulta la web. Usa "Pegar lista".');
@@ -1488,6 +1558,10 @@ function aplicarTemporada() {
       .then(r => { S.propios = r.pronosticos || {}; if (S.vista === 'jornada') render(); })
       .catch(() => { S.sesion = null; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); pintarCabecera(); });
   }
+  // Banner de resultados en directo (cada minuto mientras la web está a la vista)
+  actualizarDirecto();
+  setInterval(actualizarDirecto, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarDirecto(); });
   // Aviso de versión nueva de la web (al abrirla, cada 10 minutos y al volver a la pestaña)
   setTimeout(comprobarVersion, 8000);
   setInterval(comprobarVersion, 600000);
