@@ -62,6 +62,18 @@ input,select,textarea{font:inherit}
 .dx.pre .min{color:#9db5a5;font-weight:600}
 .dx .dsig{font-size:10.5px;font-weight:800;background:rgba(242,194,48,.18);color:var(--oro);border-radius:4px;padding:1px 5px}
 @media(prefers-reduced-motion:reduce){.directo-vent{overflow-x:auto}.directo-pista{animation:none}}
+.noticias{display:flex;flex-direction:column;gap:10px}
+.noticia{display:flex;gap:12px;background:#fff;border:1px solid var(--linea);border-radius:14px;padding:10px;color:inherit;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.noticia:active{transform:scale(.99)}
+.noticia img{width:96px;height:72px;object-fit:cover;border-radius:10px;flex:none;background:#e8efe9}
+.noticia .tx{min-width:0;display:flex;flex-direction:column;gap:4px}
+.noticia b{font-size:15px;line-height:1.25;color:var(--noche)}
+.noticia p{margin:0;font-size:13px;line-height:1.35;color:#4c5b51;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.noticia small{font-size:11.5px;color:#6b7a70;font-weight:600}
+.medios{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.medios button{border:1px solid var(--linea);background:#fff;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--noche)}
+.medios button.activo{background:var(--oro);border-color:var(--oro)}
+@media(min-width:620px){.noticia img{width:140px;height:96px}}
 .demo{background:var(--oro);color:var(--noche);text-align:center;font-size:12px;font-weight:700;padding:5px 10px}
 
 /* ---------- Navegación inferior ---------- */
@@ -328,6 +340,8 @@ body.navidad .titulo span{color:#ffd23f}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5l4 2.9-1.5 4.7h-5L8 10.4z" fill="currentColor"/><path d="M12 2.5v5M16 10.4l5-1.6M14.5 15.1l3 4.2M9.5 15.1l-3 4.2M8 10.4l-5-1.6"/></svg>Jornada</button>
   <button data-vista="clasificacion">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6"/></svg>Clasificación</button>
+  <button data-vista="noticias">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M7.5 8.5h6M7.5 12h6M7.5 15.5h4"/></svg>Noticias</button>
   <button data-vista="admin">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="13" r="6"/><path d="M9.5 10.5 3 8.5V6l8 2.6M15 13h.01M18 7.5l2.5-2.5"/></svg>Admin</button>
 </nav>
@@ -342,7 +356,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.2';
+const VERSION_WEB = '2026-11-18.3';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -565,6 +579,7 @@ function render() {
   if (!S.datos) return;
   if (S.vista === 'jornada') app.innerHTML = vistaJornada();
   else if (S.vista === 'clasificacion') app.innerHTML = vistaClasificacion();
+  else if (S.vista === 'noticias') app.innerHTML = vistaNoticias();
   else app.innerHTML = vistaAdmin();
   enlazar();
 }
@@ -1122,6 +1137,7 @@ function enlazar() {
   if (bw) bw.onclick = () => enviarWhatsApp(bw);
   const ba = $('#b-actualizar');
   if (ba) ba.onclick = () => actualizarResultadosWeb(ba);
+  if (S.vista === 'noticias') $('#app').querySelectorAll('[data-medio]').forEach(b => b.onclick = () => { S.medio = b.dataset.medio; render(); });
   if (S.vista === 'clasificacion') {
     $('#app').querySelectorAll('[data-temp]').forEach(b => b.onclick = () => { S.histSel = b.dataset.temp; S.histJSel = null; render(); window.scrollTo({ top: 0 }); });
     const hj = $('#chips-hj');
@@ -1322,6 +1338,40 @@ function enlazarEditorJornada() {
   });
 }
 
+/* ─────────────── Noticias de Primera ─────────────── */
+function haceCuanto(iso) {
+  const min = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return 'hace ' + min + ' min';
+  const h = Math.round(min / 60);
+  if (h < 24) return 'hace ' + h + (h === 1 ? ' hora' : ' horas');
+  const d = Math.round(h / 24);
+  return 'hace ' + d + (d === 1 ? ' día' : ' días');
+}
+function cargarNoticias(forzar) {
+  if (S.cargandoNoticias || (S.noticias && !forzar && Date.now() - S.noticias.cargadas < 10 * 60000)) return;
+  S.cargandoNoticias = true;
+  api('noticias').then(r => { S.noticias = { lista: r.noticias || [], cargadas: Date.now() }; })
+    .catch(e => { if (!S.noticias) S.noticias = { lista: [], error: e.message, cargadas: Date.now() }; })
+    .finally(() => { S.cargandoNoticias = false; if (S.vista === 'noticias') render(); });
+}
+function vistaNoticias() {
+  cargarNoticias();
+  if (!S.noticias) return '<div class="card"><h2>Noticias de Primera</h2><div class="cargando">Buscando las últimas noticias…</div></div>';
+  const lista = S.noticias.lista;
+  if (!lista.length) return '<div class="card vacio"><h2>Noticias de Primera</h2><p>' + (S.noticias.error ? 'No se han podido cargar las noticias. Prueba en un rato.' : 'No hay noticias ahora mismo.') + '</p></div>';
+  const medios = [...new Set(lista.map(n => n.medio))];
+  const filtro = medios.includes(S.medio) ? S.medio : '';
+  const vis = lista.filter(n => !filtro || n.medio === filtro);
+  return '<div class="card"><h2>Noticias de Primera</h2>'
+    + '<div class="medios">' + ['', ...medios].map(m => '<button data-medio="' + esc(m) + '" class="' + (m === filtro ? 'activo' : '') + '">' + esc(m || 'Todas') + '</button>').join('') + '</div>'
+    + '<div class="noticias">' + vis.map(n => '<a class="noticia" href="' + esc(n.enlace) + '" target="_blank" rel="noopener noreferrer">'
+      + (n.imagen ? '<img src="' + esc(n.imagen) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '')
+      + '<div class="tx"><b>' + esc(n.titulo) + '</b>' + (n.resumen ? '<p>' + esc(n.resumen) + '</p>' : '')
+      + '<small>' + esc(n.medio) + ' · ' + esc(haceCuanto(n.fecha)) + '</small></div></a>').join('') + '</div>'
+    + '<p class="muted" style="margin-top:10px">Titulares de Marca, AS y Mundo Deportivo. Al tocar una noticia se abre en su web.</p></div>';
+}
+
 /* ─────────────── Banner de resultados en directo ─────────────── */
 function textoDirecto(p) {
   const sig = (p.gl === null || p.gl === undefined || p.gv === null || p.gv === undefined) ? '' : (p.gl > p.gv ? '1' : p.gl < p.gv ? '2' : 'X');
@@ -1491,6 +1541,11 @@ function demoApi(accion, p) {
         return { numero: j.numero, partidos: j.partidos.map((pp, i) => ({ pos: i + 1, local: pp.local, visitante: pp.visitante, resultado: '',
           estado: i < 5 ? 'post' : i < 8 ? 'in' : 'pre', gl: i < 8 ? (i * 7) % 4 : null, gv: i < 8 ? (i * 3) % 3 : null,
           detalle: i < 5 ? 'FT' : i === 6 ? 'HT' : (30 + i * 7) + "'", inicio: new Date(ahora + (i - 7) * 3600e3).toISOString() })) };
+      }
+      case 'noticias': {
+        const medios = ['Marca', 'AS', 'Mundo Deportivo'];
+        const titulares = ['El líder gana y se escapa en la tabla', 'Un central se lesiona y será baja tres semanas', 'El derbi ya tiene horario', 'El entrenador renueva hasta 2028', 'Polémica arbitral en el último partido', 'El mercado de invierno se mueve'];
+        return { noticias: titulares.map((t, i) => ({ titulo: t + ' (demo)', enlace: 'https://example.com/noticia-' + i, fecha: new Date(Date.now() - (i * 95 + 7) * 60000).toISOString(), imagen: '', resumen: 'Noticia inventada para el modo demo.', medio: medios[i % 3] })) };
       }
       case 'marcarNoJugada': adm(); jor(p.numero).anulada = !!p.anulada; log('Jornada', p.numero, '', p.anulada ? 'marcada como NO SE JUEGA' : 'vuelve a contar', 'admin'); return { ok: true };
       case 'buscarResultados': adm(); throw new Error('En el modo demo no se consulta la web de Loterías.');
