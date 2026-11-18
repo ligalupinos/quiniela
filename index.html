@@ -396,7 +396,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.6';
+const VERSION_WEB = '2026-11-18.7';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -568,7 +568,34 @@ function pintarCabecera() {
   chip.hidden = !S.datos;
   chip.textContent = S.sesion ? '👤 ' + S.sesion.nombre : '👤 Entrar';
 }
-$('#chip-sesion').addEventListener('click', () => { if (S.sesion) abrirPerfil(); else abrirLogin(abrirPerfil); });
+$('#chip-sesion').addEventListener('click', () => { if (S.sesion) abrirPerfil(); else abrirLogin(); });
+
+/** Primera entrada (o PIN puesto por el admin): se le pide al jugador que elija su propio PIN */
+function pedirPinPropio(alTerminar) {
+  abrirModal('<div class="modal-cab"><h2>🔑 Elige tu PIN</h2><button class="cerrar">×</button></div>'
+    + '<p style="margin-top:0">Has entrado con un PIN que te ha dado el administrador. Pon uno tuyo de 4 cifras que solo sepas tú.</p>'
+    + '<div class="rejilla2"><div class="campo"><label>PIN nuevo</label><input id="pp-1" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>'
+    + '<div class="campo"><label>Repite el PIN</label><input id="pp-2" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div></div>'
+    + '<button class="btn btn-oro btn-bloque" id="pp-ok">💾 Guardar mi PIN</button>'
+    + '<div class="acciones"><button class="btn btn-claro btn-bloque" id="pp-mantener">Seguir con el PIN actual</button></div>');
+  const seguir = () => { cerrarModal(); if (alTerminar) alTerminar(); };
+  const guardarSesion = () => almacen.set('lupinos_sesion', S.sesion, !almacen.get('lupinos_sesion'));
+  $('#pp-ok').onclick = () => {
+    const p1 = $('#pp-1').value.trim(), p2 = $('#pp-2').value.trim();
+    if (!/^\d{4}$/.test(p1)) return toast('El PIN nuevo debe tener 4 cifras', true);
+    if (p1 !== p2) return toast('Los dos PIN no coinciden', true);
+    conCarga($('#pp-ok'), async () => {
+      await api('editarPerfil', { jugadorId: S.sesion.id, pin: S.sesion.pin, nuevoPin: p1 });
+      S.sesion.pin = p1; guardarSesion();
+      toast('PIN cambiado. ¡Que no se te olvide!');
+      seguir();
+    });
+  };
+  $('#pp-mantener').onclick = () => conCarga($('#pp-mantener'), async () => {
+    await api('editarPerfil', { jugadorId: S.sesion.id, pin: S.sesion.pin, mantenerPin: true });
+    seguir();
+  });
+}
 
 /** «Mi equipo»: el jugador cambia su nombre de equipo y su PIN */
 function abrirPerfil() {
@@ -826,9 +853,10 @@ function abrirLogin(alEntrar) {
       almacen.set('lupinos_sesion', S.sesion, !$('#l-rec').checked);
       pintarCabecera();
       cerrarModal();
-      toast('¡Hola, ' + r.jugador.nombre + '!');
+      if (!r.cambiarPin) toast('¡Hola, ' + r.jugador.nombre + '!');
       render();
-      if (alEntrar) alEntrar();
+      if (r.cambiarPin) pedirPinPropio(alEntrar);
+      else if (alEntrar) alEntrar();
     });
   };
   $('#l-ok').onclick = entrar;
@@ -1725,16 +1753,17 @@ function demoApi(accion, p) {
   return espera(250).then(() => {
     switch (accion) {
       case 'datos': return vista(false);
-      case 'entrarJugador': { const g = jug(p.jugadorId, p.pin); const pr = {}; DB.jornadas.forEach(j => { if (j.pronosticos[g.id]) pr[j.numero] = j.pronosticos[g.id]; }); return copia({ jugador: { id: g.id, nombre: g.nombre }, pronosticos: pr }); }
+      case 'entrarJugador': { const g = jug(p.jugadorId, p.pin); const pr = {}; DB.jornadas.forEach(j => { if (j.pronosticos[g.id]) pr[j.numero] = j.pronosticos[g.id]; }); return copia({ jugador: { id: g.id, nombre: g.nombre }, pronosticos: pr, cambiarPin: !g.pinOk }); }
       case 'guardarPronostico': { const g = jug(p.jugadorId, p.pin); const j = jor(p.jornada); if (j.anulada) throw new Error('Esta jornada no se juega.'); if (new Date(j.cierre) <= new Date()) throw new Error('La jornada ya está cerrada.'); j.pronosticos[g.id] = p.signos; log('Pronóstico', j.numero, g.nombre, p.signos.join(' '), g.nombre); return { guardado: true }; }
       case 'editarPerfil': { const g = jug(p.jugadorId, p.pin);
+        if (p.mantenerPin) { g.pinOk = true; return { nombre: g.nombre }; }
         if (p.nuevoNombre !== undefined) { const n = String(p.nuevoNombre).trim(); if (!n) throw new Error('Pon un nombre de equipo.'); if (DB.jugadores.some(x => x.id !== g.id && x.nombre.toLowerCase() === n.toLowerCase())) throw new Error('Ya hay un equipo con ese nombre.'); g.nombre = n; }
-        if (p.nuevoPin !== undefined) { if (!/^\d{4}$/.test(p.nuevoPin)) throw new Error('El PIN nuevo debe tener 4 cifras.'); g.pin = p.nuevoPin; }
+        if (p.nuevoPin !== undefined) { if (!/^\d{4}$/.test(p.nuevoPin)) throw new Error('El PIN nuevo debe tener 4 cifras.'); g.pin = p.nuevoPin; g.pinOk = true; }
         log('Jugador', '', g.nombre, 'cambió sus datos', g.nombre); return { nombre: g.nombre }; }
       case 'adminLogin': if (p.password !== DB.admin) throw new Error('Contraseña incorrecta.'); return { token: 'demo-token' };
       case 'adminDatos': adm(); return vista(true);
       case 'guardarJugador': { adm(); const d = p.jugador; if (!d.nombre) throw new Error('El nombre es obligatorio.'); if (d.pin && !/^\d{4}$/.test(d.pin)) throw new Error('El PIN debe tener 4 cifras.');
-        if (d.id) { const g = DB.jugadores.find(x => x.id === d.id); Object.assign(g, { nombre: d.nombre, columna: d.columna, activo: d.activo }); if (d.pin) g.pin = d.pin; }
+        if (d.id) { const g = DB.jugadores.find(x => x.id === d.id); Object.assign(g, { nombre: d.nombre, columna: d.columna, activo: d.activo }); if (d.pin) { g.pin = d.pin; g.pinOk = false; } }
         else { if (!d.pin) throw new Error('Pon un PIN de 4 cifras para el jugador nuevo.'); DB.jugadores.push({ id: 'd' + Date.now(), nombre: d.nombre, columna: d.columna, activo: true, pin: d.pin }); }
         log('Jugador', '', d.nombre, d.id ? 'editado' : 'alta', 'admin'); return { ok: true }; }
       case 'guardarJornada': { adm(); const d = p.jornada; let ex = DB.jornadas.find(x => x.numero === d.numero); if (p.nueva && ex) throw new Error('Ya existe la jornada J' + d.numero + '.');
