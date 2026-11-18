@@ -88,6 +88,23 @@ input,select,textarea{font:inherit}
 .menu-admin .estado{margin-top:auto;font-size:12px;font-weight:700;color:var(--cesped)}
 .titulo-admin{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff;margin-top:18px}
 .titulo-admin h2{margin:0;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:30px;letter-spacing:1px}
+.mi-acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 10px}
+.mi-acciones .btn{padding:9px 6px;font-size:12.5px;line-height:1.2}
+.mi-form{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:12px;margin-bottom:12px}
+.mi-form .acciones{display:flex;gap:8px;justify-content:flex-end}
+.mi-tabs{display:flex;gap:4px;background:#e3ebe5;border-radius:12px;padding:4px;margin:6px 0 12px}
+.mi-tabs button{flex:1;border:0;background:none;border-radius:9px;padding:8px 4px;font-weight:700;font-size:12.5px;color:var(--gris);cursor:pointer}
+.mi-tabs button.activo{background:#fff;color:var(--tinta);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.mis-jornadas tbody tr{cursor:pointer}
+.mis-jornadas td.mas{color:var(--cesped);font-weight:700}
+.mis-jornadas td.menos{color:#b3261e;font-weight:700}
+.mis-jornadas .pill{font-size:10px;padding:1px 6px;background:#e3ebe5;color:var(--gris)}
+.curiosidades{display:grid;gap:8px}
+.curio{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--linea);border-radius:14px;padding:10px 12px}
+.curio .ico{font-size:24px;line-height:1.2}
+.curio small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gris)}
+.curio b{display:block;font-size:16px;color:var(--tinta)}
+.curio p{margin:2px 0 0;font-size:12.5px;color:var(--gris)}
 .premios{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
 .premio{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:10px 12px}
 .premio .ico{font-size:22px;line-height:1}
@@ -396,7 +413,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.7';
+const VERSION_WEB = '2026-11-18.8';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -597,40 +614,150 @@ function pedirPinPropio(alTerminar) {
   });
 }
 
-/** «Mi equipo»: el jugador cambia su nombre de equipo y su PIN */
-function abrirPerfil() {
-  abrirModal('<div class="modal-cab"><h2>Mi equipo</h2><button class="cerrar">×</button></div>'
-    + '<div class="campo"><label>Nombre del equipo</label><input id="mi-nombre" maxlength="40" value="' + esc(S.sesion.nombre) + '"></div>'
-    + '<div class="rejilla2"><div class="campo"><label>PIN nuevo</label><input id="mi-pin1" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>'
-    + '<div class="campo"><label>Repite el PIN</label><input id="mi-pin2" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div></div>'
-    + '<p class="muted" style="margin-top:-4px">Deja el PIN vacío si no quieres cambiarlo.</p>'
-    + '<button class="btn btn-oro btn-bloque" id="mi-guardar">💾 Guardar cambios</button>'
-    + '<div class="acciones"><button class="btn btn-claro btn-bloque" id="b-salir">Cerrar sesión</button></div>');
+/** «Mi equipo»: menú del jugador con sus opciones, sus jornadas, su ficha y curiosidades */
+function abrirPerfil(seccion) {
+  seccion = seccion || S.miSeccion || 'jornadas';
+  S.miSeccion = seccion;
+  const id = S.sesion.id;
+  const js = jornadasQueCuentan().filter(j => nRes(j));
+  const jugs = jugadoresVisibles();
+  const yo = js.length && jugs.some(g => g.id === id) ? clasificacionHasta(js, jugs).find(f => f.id === id) : null;
+  const secciones = [['jornadas', '📅 Mis jornadas'], ['ficha', '📊 Estadísticas'], ['curiosidades', '🤓 Curiosidades']];
+  let cuerpo = '';
+  if (!js.length || !yo) cuerpo = '<p class="muted">Cuando termine tu primera jornada aquí verás tu historial, tus estadísticas y alguna curiosidad.</p>';
+  else if (seccion === 'jornadas') cuerpo = misJornadasHtml(id, js, jugs);
+  else if (seccion === 'ficha') cuerpo = fichaHtml(id, true);
+  else cuerpo = curiosidadesHtml(id, js, jugs);
+  abrirModal('<div class="modal-cab"><h2>👤 ' + esc(S.sesion.nombre) + '</h2><button class="cerrar">×</button></div>'
+    + (yo ? '<div class="ficha-cab"><b>' + yo.pos + 'º</b><span>' + yo.total + ' puntos en la clasificación</span></div>' : '')
+    + '<div class="mi-acciones"><button class="btn btn-claro btn-peq" data-mi="nombre">✏️ Cambiar nombre</button><button class="btn btn-claro btn-peq" data-mi="pin">🔑 Cambiar PIN</button><button class="btn btn-claro btn-peq" data-mi="salir">🚪 Cerrar sesión</button></div>'
+    + '<div id="mi-form"></div>'
+    + '<div class="mi-tabs" role="tablist">' + secciones.map(t => '<button role="tab" aria-selected="' + (t[0] === seccion) + '" class="' + (t[0] === seccion ? 'activo' : '') + '" data-sec="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>'
+    + '<div class="mi-cuerpo">' + cuerpo + '</div>');
+  const capa = $('#capa-modal');
+  capa.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => abrirPerfil(b.dataset.sec));
+  capa.querySelectorAll('[data-ir-j]').forEach(tr => tr.onclick = () => { S.jSel = Number(tr.dataset.irJ); S.vista = 'jornada'; document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x.dataset.vista === 'jornada')); cerrarModal(); render(); window.scrollTo({ top: 0 }); });
+  if (seccion === 'ficha') enlazarGrafica();
+  capa.querySelector('[data-mi="salir"]').onclick = () => { S.sesion = null; S.propios = {}; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); cerrarModal(); pintarCabecera(); render(); toast('Sesión cerrada'); };
+  capa.querySelector('[data-mi="nombre"]').onclick = () => formPerfil('nombre');
+  capa.querySelector('[data-mi="pin"]').onclick = () => formPerfil('pin');
+}
+
+function formPerfil(tipo) {
+  const caja = $('#mi-form');
+  if (caja.dataset.tipo === tipo) { caja.innerHTML = ''; caja.dataset.tipo = ''; return; }
+  caja.dataset.tipo = tipo;
+  caja.innerHTML = '<div class="mi-form">' + (tipo === 'nombre'
+    ? '<div class="campo"><label>Nombre del equipo</label><input id="mi-nombre" maxlength="40" value="' + esc(S.sesion.nombre) + '"></div>'
+    : '<div class="rejilla2"><div class="campo"><label>PIN nuevo</label><input id="mi-pin1" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>'
+      + '<div class="campo"><label>Repite el PIN</label><input id="mi-pin2" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div></div>')
+    + '<div class="acciones"><button class="btn btn-claro" id="mi-cancelar">Cancelar</button><button class="btn btn-oro" id="mi-guardar">💾 Guardar</button></div></div>';
+  (tipo === 'nombre' ? $('#mi-nombre') : $('#mi-pin1')).focus();
+  $('#mi-cancelar').onclick = () => { caja.innerHTML = ''; caja.dataset.tipo = ''; };
   $('#mi-guardar').onclick = async () => {
-    const nombre = $('#mi-nombre').value.trim(), p1 = $('#mi-pin1').value.trim(), p2 = $('#mi-pin2').value.trim();
-    if (!nombre) return toast('Pon un nombre de equipo', true);
     const cambios = {};
-    if (nombre !== S.sesion.nombre) cambios.nuevoNombre = nombre;
-    if (p1 || p2) {
+    if (tipo === 'nombre') {
+      const nombre = $('#mi-nombre').value.trim();
+      if (!nombre) return toast('Pon un nombre de equipo', true);
+      if (nombre === S.sesion.nombre) return toast('No has cambiado nada');
+      cambios.nuevoNombre = nombre;
+    } else {
+      const p1 = $('#mi-pin1').value.trim(), p2 = $('#mi-pin2').value.trim();
       if (!/^\d{4}$/.test(p1)) return toast('El PIN nuevo debe tener 4 cifras', true);
       if (p1 !== p2) return toast('Los dos PIN no coinciden', true);
       cambios.nuevoPin = p1;
     }
-    if (!Object.keys(cambios).length) return toast('No has cambiado nada');
     await conCarga($('#mi-guardar'), async () => {
       const r = await api('editarPerfil', Object.assign({ jugadorId: S.sesion.id, pin: S.sesion.pin }, cambios));
       const recordar = !!almacen.get('lupinos_sesion');
       S.sesion.nombre = r.nombre;
       if (cambios.nuevoPin) S.sesion.pin = cambios.nuevoPin;
       almacen.set('lupinos_sesion', S.sesion, !recordar);
-      cerrarModal();
       pintarCabecera();
-      toast(cambios.nuevoPin && cambios.nuevoNombre ? 'Nombre y PIN actualizados' : cambios.nuevoPin ? 'PIN cambiado. ¡Que no se te olvide!' : 'Nombre del equipo cambiado');
+      toast(cambios.nuevoPin ? 'PIN cambiado. ¡Que no se te olvide!' : 'Nombre del equipo cambiado');
       await cargarDatos();
       render();
+      abrirPerfil();
     });
   };
-  $('#b-salir').onclick = () => { S.sesion = null; S.propios = {}; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); cerrarModal(); pintarCabecera(); render(); toast('Sesión cerrada'); };
+}
+
+/** Historial de jornadas del jugador: aciertos, puesto en la jornada, pleno y comparación con la media */
+function misJornadasHtml(id, js, jugs) {
+  const filas = js.slice().reverse().map(j => {
+    const p = puntos(j, id);
+    if (p === null) return '<tr data-ir-j="' + j.numero + '"><td>J' + j.numero + '</td><td colspan="4" class="muted">No jugó</td></tr>';
+    const ps = jugs.map(o => puntos(j, o.id)).filter(v => v !== null);
+    const puesto = 1 + ps.filter(v => v > p).length;
+    const media = ps.reduce((a, b) => a + b, 0) / ps.length;
+    const dif = p - media, txt = (dif >= 0 ? '+' : '−') + Math.abs(dif).toFixed(1).replace('.', ',');
+    const enJuego = nRes(j) < 15;
+    return '<tr data-ir-j="' + j.numero + '"><td>J' + j.numero + (enJuego ? ' <span class="pill">en juego</span>' : '') + '</td><td><b>' + p + '</b></td>'
+      + '<td>' + (puesto === 1 && !enJuego ? '🏅 ' : '') + puesto + 'º <span class="muted">de ' + ps.length + '</span></td>'
+      + '<td class="' + (dif >= 0 ? 'mas' : 'menos') + '">' + txt + '</td><td>' + (plenoAcertado(j, id) ? '🎯' : '') + '</td></tr>';
+  }).join('');
+  return '<div class="tabla-wrap"><table class="clasif mis-jornadas"><thead><tr><th>Jornada</th><th title="Aciertos">Acier.</th><th>Puesto</th><th title="Diferencia con la media del grupo">vs media</th><th title="Pleno al 15">P15</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
+    + '<p class="muted">Toca una jornada para ver su boleto.</p>';
+}
+
+/** Datos curiosos del jugador sacados de todas sus jornadas */
+function curiosidadesHtml(id, js, jugs) {
+  const items = [];
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  // Acierto según el signo que pone
+  const porSigno = { '1': [0, 0], 'X': [0, 0], '2': [0, 0] };
+  // Equipos: aciertos en los partidos de cada equipo
+  const equipos = {};
+  // Racha de partidos seguidos acertados
+  let racha = 0, mejorRacha = 0;
+  // Solo, contra todos
+  let solo = 0, unicoFallo = 0;
+  // Coincidencia con cada rival
+  const coinc = {};
+  js.forEach(j => {
+    const mio = j.pronosticos[id];
+    if (!Array.isArray(mio)) return;
+    for (let i = 0; i < 14; i++) {
+      const r = j.resultados[i], s = mio[i];
+      jugs.forEach(o => { if (o.id === id) return; const su = j.pronosticos[o.id]; if (Array.isArray(su) && su[i]) { const c = coinc[o.id] = coinc[o.id] || [0, 0]; c[1]++; if (su[i] === s) c[0]++; } });
+      if (!r || !porSigno[s]) continue;
+      const ok = s === r;
+      porSigno[s][1]++; if (ok) porSigno[s][0]++;
+      const pt = j.partidos[i] || {};
+      [pt.local, pt.visitante].forEach(eq => { if (!eq) return; const e = equipos[eq] = equipos[eq] || [0, 0]; e[1]++; if (ok) e[0]++; });
+      if (ok) { racha++; mejorRacha = Math.max(mejorRacha, racha); } else racha = 0;
+      const otros = jugs.filter(o => o.id !== id && Array.isArray(j.pronosticos[o.id]));
+      if (otros.length) {
+        const aciertanOtros = otros.filter(o => j.pronosticos[o.id][i] === r).length;
+        if (ok && aciertanOtros === 0) solo++;
+        if (!ok && aciertanOtros === otros.length) unicoFallo++;
+      }
+    }
+  });
+  const signos = ['1', 'X', '2'].filter(k => porSigno[k][1] >= 5);
+  if (signos.length) {
+    const mejor = signos.reduce((a, b) => pct(...porSigno[b]) > pct(...porSigno[a]) ? b : a);
+    items.push(['🎲', 'Tu signo de la suerte', 'El ' + mejor, 'Cuando lo pones aciertas el ' + pct(...porSigno[mejor]) + '% (' + signos.map(k => k + ': ' + pct(...porSigno[k]) + '%').join(' · ') + ')']);
+  }
+  const eqs = Object.keys(equipos).filter(e => equipos[e][1] >= 3);
+  if (eqs.length >= 2) {
+    const orden = eqs.slice().sort((a, b) => pct(...equipos[b]) - pct(...equipos[a]) || equipos[b][1] - equipos[a][1]);
+    const t = orden[0], m = orden[orden.length - 1];
+    items.push(['🍀', 'Equipo talismán', esc(t), 'Aciertas el ' + pct(...equipos[t]) + '% de sus partidos (' + equipos[t][0] + ' de ' + equipos[t][1] + ')']);
+    items.push(['🙈', 'Equipo gafe', esc(m), 'Solo aciertas el ' + pct(...equipos[m]) + '% de sus partidos (' + equipos[m][0] + ' de ' + equipos[m][1] + ')']);
+  }
+  items.push(['🔥', 'Mejor racha', mejorRacha + ' aciertos seguidos', 'Partido tras partido, sin fallar ninguno']);
+  items.push(['🔮', 'Aciertos en solitario', solo, solo === 1 ? 'Partido que solo acertaste tú' : 'Partidos que solo acertaste tú']);
+  items.push(['🤦', 'Fallos en solitario', unicoFallo, unicoFallo === 1 ? 'Partido que acertaron todos menos tú' : 'Partidos que acertaron todos menos tú']);
+  const rivales = Object.keys(coinc).filter(k => coinc[k][1] >= 14);
+  if (rivales.length >= 2) {
+    const nombre = k => (jugs.find(o => o.id === k) || {}).nombre || '';
+    const orden = rivales.slice().sort((a, b) => pct(...coinc[b]) - pct(...coinc[a]));
+    const a = orden[0], z = orden[orden.length - 1];
+    items.push(['👯', 'Tu alma gemela', esc(nombre(a)), 'Pone lo mismo que tú en el ' + pct(...coinc[a]) + '% de los partidos']);
+    items.push(['🙃', 'Tu polo opuesto', esc(nombre(z)), 'Solo coincidís en el ' + pct(...coinc[z]) + '% de los partidos']);
+  }
+  return '<div class="curiosidades">' + items.map(x => '<div class="curio"><span class="ico">' + x[0] + '</span><div><small>' + x[1] + '</small><b>' + x[2] + '</b><p>' + x[3] + '</p></div></div>').join('') + '</div>';
 }
 
 $('#nav').addEventListener('click', e => {
@@ -1511,11 +1638,11 @@ function graficaPuesto(serie, nJug) {
   s += '<text x="' + Math.min(x(serie.length - 1), W - de) + '" y="' + (y(u.pos) - 9) + '" text-anchor="end" font-size="11" font-weight="700" fill="#0f1d14">' + u.pos + 'º</text>';
   return s + '</svg>';
 }
-function abrirFicha(id) {
+function fichaHtml(id, propia) {
   const js = jornadasQueCuentan().filter(j => nRes(j));
   const jugs = jugadoresVisibles();
   const g = jugs.find(x => x.id === id);
-  if (!g || !js.length) return;
+  if (!g || !js.length) return '';
   // Puesto después de cada jornada
   const serie = js.map((j, k) => { const c = clasificacionHasta(js.slice(0, k + 1), jugs); const f = c.find(x => x.id === id); return { j: j.numero, pos: f.pos, pts: f.total }; });
   const actual = serie[serie.length - 1];
@@ -1555,8 +1682,7 @@ function abrirFicha(id) {
   const barra = (c, t) => '<div class="reparto">' + [['1', '#0b5d2a'], ['X', '#8a6d00'], ['2', '#2b5f8a']].map(([s, col]) => { const v = pct(c[s], t); return v ? '<i style="flex:' + v + ';background:' + col + '">' + s + ' ' + v + '%</i>' : ''; }).join('') + '</div>';
   const plenos = js.filter(j => plenoAcertado(j, id)).length;
   const dato = (t, v, s) => '<div><span>' + t + '</span><b>' + v + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</div>';
-  abrirModal('<div class="modal-cab"><h2>' + esc(g.nombre) + '</h2><button class="cerrar">×</button></div>'
-    + '<div class="ficha-cab"><b>' + actual.pos + 'º</b><span>' + actual.pts + ' puntos · ' + suyas.length + ' jornadas jugadas</span></div>'
+  return (propia ? '' : '<div class="ficha-cab"><b>' + actual.pos + 'º</b><span>' + actual.pts + ' puntos · ' + suyas.length + ' jornadas jugadas</span></div>')
     + '<div class="ficha-sec" style="margin-top:0"><h4>Puesto jornada a jornada</h4><div class="grafica-puesto" id="g-puesto">' + graficaPuesto(serie, jugs.length) + '<div class="tip"></div></div></div>'
     + '<div class="datos-ficha">'
     + dato('Media', media.toFixed(1).replace('.', ','), 'grupo: ' + mediaGrupo.toFixed(1).replace('.', ','))
@@ -1568,7 +1694,16 @@ function abrirFicha(id) {
     + '</div>'
     + '<div class="ficha-sec"><h4>Cómo reparte sus signos</h4><p class="muted" style="margin:0">' + esc(g.nombre) + '</p>' + barra(cuenta, total14) + '<p class="muted" style="margin:6px 0 0">Media del grupo</p>' + barra(cuentaG, tG) + '</div>'
     + '<div class="ficha-sec"><h4>Contra la mayoría</h4><p style="margin:0;font-size:14px">Ha ido contra lo que votó la mayoría en <b>' + contra + '</b> de ' + total14 + ' partidos (' + pct(contra, total14) + '%)'
-    + (contra ? ' y ha acertado <b>' + contraOk + '</b> (' + pct(contraOk, contra) + '%).' : '.') + '</p></div>');
+    + (contra ? ' y ha acertado <b>' + contraOk + '</b> (' + pct(contraOk, contra) + '%).' : '.') + '</p></div>';
+}
+function abrirFicha(id) {
+  const html = fichaHtml(id);
+  if (!html) return;
+  const g = jugadoresVisibles().find(x => x.id === id);
+  abrirModal('<div class="modal-cab"><h2>' + esc(g.nombre) + '</h2><button class="cerrar">×</button></div>' + html);
+  enlazarGrafica();
+}
+function enlazarGrafica() {
   const caja = $('#g-puesto'), tip = caja && caja.querySelector('.tip');
   if (caja) caja.querySelectorAll('.hit').forEach(c => {
     const ver = () => { const r = c.getBoundingClientRect(), b = caja.getBoundingClientRect(); tip.textContent = c.dataset.tip; tip.style.left = (r.left + r.width / 2 - b.left) + 'px'; tip.style.top = (r.top + r.height / 2 - b.top) + 'px'; tip.style.display = 'block'; };
