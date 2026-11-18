@@ -413,7 +413,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.8';
+const VERSION_WEB = '2026-11-18.9';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -773,6 +773,8 @@ $('#nav').addEventListener('click', e => {
 function render() {
   const app = $('#app');
   if (!S.datos) return;
+  // Se recuerda dónde estás para que al recargar la página vuelvas al mismo sitio
+  almacen.set('lupinos_pos', { vista: S.vista, jSel: S.jSel, adminTab: S.adminTab, histSel: S.histSel }, true);
   if (S.vista === 'jornada') app.innerHTML = vistaJornada();
   else if (S.vista === 'clasificacion') app.innerHTML = vistaClasificacion();
   else if (S.vista === 'noticias') app.innerHTML = vistaNoticias();
@@ -1998,6 +2000,14 @@ function aplicarTemporada() {
   setInterval(aplicarTemporada, 30000);
   S.sesion = almacen.get('lupinos_sesion') || almacen.get('lupinos_sesion', true);
   S.admin = almacen.get('lupinos_admin', true);
+  const pos = almacen.get('lupinos_pos', true);
+  if (pos && ['jornada', 'clasificacion', 'noticias', 'admin'].includes(pos.vista)) {
+    S.vista = pos.vista;
+    if (typeof pos.jSel === 'number') S.jSel = pos.jSel;
+    if (pos.adminTab) S.adminTab = pos.adminTab;
+    if (pos.histSel) S.histSel = pos.histSel;
+    document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x.dataset.vista === S.vista));
+  }
   // Arranque rápido: se enseña al momento lo que se vio la última vez y se actualiza por detrás
   const guardados = DEMO ? null : almacen.get('lupinos_datos');
   if (!DEMO) {
