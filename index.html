@@ -88,6 +88,10 @@ input,select,textarea{font:inherit}
 .menu-admin .estado{margin-top:auto;font-size:12px;font-weight:700;color:var(--cesped)}
 .titulo-admin{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff;margin-top:18px}
 .titulo-admin h2{margin:0;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:30px;letter-spacing:1px}
+.noticias-cab{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.noticias-cab h2{margin:0}
+.noticias-cab .btn{white-space:nowrap;flex-shrink:0}
+.noticias-hora{margin:4px 0 0;font-size:12px}
 .mi-rellenar{margin:2px 0 4px}
 .mi-cierre{margin:0 0 12px;text-align:center}
 .mi-acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 10px}
@@ -415,7 +419,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-18.10';
+const VERSION_WEB = '2026-11-19.1';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -1380,6 +1384,8 @@ function enlazar() {
   const ba = $('#b-actualizar');
   if (ba) ba.onclick = () => actualizarResultadosWeb(ba);
   if (S.vista === 'noticias') $('#app').querySelectorAll('[data-medio]').forEach(b => b.onclick = () => { S.medio = b.dataset.medio; render(); });
+  const ban = $('#b-act-noticias');
+  if (ban) ban.onclick = () => cargarNoticias(true);
   if (S.vista === 'clasificacion') {
     $('#app').querySelectorAll('[data-temp]').forEach(b => b.onclick = () => { S.histSel = b.dataset.temp; S.histJSel = null; render(); window.scrollTo({ top: 0 }); });
     const hj = $('#chips-hj');
@@ -1764,7 +1770,8 @@ function haceCuanto(iso) {
 function cargarNoticias(forzar) {
   if (S.cargandoNoticias || (S.noticias && !forzar && Date.now() - S.noticias.cargadas < 10 * 60000)) return;
   S.cargandoNoticias = true;
-  api('noticias').then(r => { S.noticias = { lista: r.noticias || [], cargadas: Date.now() }; if (!DEMO) almacen.set('lupinos_noticias', S.noticias.lista); })
+  if (S.vista === 'noticias') { const b = $('#b-act-noticias'); if (b) { b.disabled = true; b.textContent = '⏳ Actualizando…'; } }
+  api('noticias', forzar ? { forzar: true } : {}).then(r => { S.noticias = { lista: r.noticias || [], cargadas: Date.now(), actualizado: r.actualizado }; if (!DEMO) almacen.set('lupinos_noticias', S.noticias.lista); if (forzar) toast('Noticias actualizadas'); })
     .catch(e => { if (!S.noticias) S.noticias = { lista: [], error: e.message, cargadas: Date.now() }; })
     .finally(() => { S.cargandoNoticias = false; if (S.vista === 'noticias') render(); });
 }
@@ -1776,7 +1783,9 @@ function vistaNoticias() {
   const medios = [...new Set(lista.map(n => n.medio))];
   const filtro = medios.includes(S.medio) ? S.medio : '';
   const vis = lista.filter(n => !filtro || n.medio === filtro);
-  return '<div class="card"><h2>Noticias de Primera</h2>'
+  const act = S.noticias.actualizado ? new Date(S.noticias.actualizado) : null;
+  return '<div class="card"><div class="noticias-cab"><h2>Noticias de Primera</h2><button class="btn btn-claro btn-peq" id="b-act-noticias"' + (S.cargandoNoticias ? ' disabled>⏳ Actualizando…' : '>🔄 Actualizar') + '</button></div>'
+    + (act && !isNaN(act) ? '<p class="muted noticias-hora">Actualizadas a las ' + act.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '</p>' : '')
     + '<div class="medios">' + ['', ...medios].map(m => '<button data-medio="' + esc(m) + '" class="' + (m === filtro ? 'activo' : '') + '">' + esc(m || 'Todas') + '</button>').join('') + '</div>'
     + '<div class="noticias">' + vis.map(n => '<a class="noticia" href="' + esc(n.enlace) + '" target="_blank" rel="noopener noreferrer">'
       + (n.imagen ? '<img src="' + esc(n.imagen) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '')
