@@ -92,6 +92,10 @@ input,select,textarea{font:inherit}
 .noticias-cab h2{margin:0}
 .noticias-cab .btn{white-space:nowrap;flex-shrink:0}
 .noticias-hora{margin:4px 0 0;font-size:12px}
+.botones-guardar{display:grid;grid-template-columns:1fr 1.3fr;gap:8px}
+.botones-guardar .btn{white-space:nowrap;padding-left:8px;padding-right:8px}
+.aviso-borrador{background:#fff7dc;border:1px solid #f1d27a;border-radius:12px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+.nota-borrador{margin:8px 0 0;font-size:12.5px;color:var(--oro);text-align:center;font-weight:600}
 .mi-rellenar{margin:2px 0 4px}
 .mi-cierre{margin:0 0 12px;text-align:center}
 .mi-acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 10px}
@@ -419,14 +423,14 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-19.1';
+const VERSION_WEB = '2026-11-20.1';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
 };
 
 const DEMO = !CONFIG.API_URL;
-const S = { datos: null, vista: 'jornada', jSel: null, sesion: null, propios: {}, admin: null, adminDatos: null, adminTab: 'inicio', edJornada: null, resSel: null, pronSel: { j: null, jug: null }, hist: null, histSel: 'actual', histJ: {}, histJSel: null };
+const S = { datos: null, vista: 'jornada', jSel: null, sesion: null, propios: {}, borradores: {}, admin: null, adminDatos: null, adminTab: 'inicio', edJornada: null, resSel: null, pronSel: { j: null, jug: null }, hist: null, histSel: 'actual', histJ: {}, histJSel: null };
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const almacen = {
@@ -637,8 +641,8 @@ function abrirPerfil(seccion) {
   else cuerpo = curiosidadesHtml(id, js, jugs);
   abrirModal('<div class="modal-cab"><h2>👤 ' + esc(S.sesion.nombre) + '</h2><button class="cerrar">×</button></div>'
     + (yo ? '<div class="ficha-cab"><b>' + yo.pos + 'º</b><span>' + yo.total + ' puntos en la clasificación</span></div>' : '')
-    + (abierta ? '<button class="btn btn-oro btn-bloque mi-rellenar" id="mi-rellenar">' + (S.propios[abierta.numero] ? '✏️ Editar mi quiniela de la J' : '⚽ Rellenar la J') + abierta.numero + '</button>'
-      + '<p class="muted mi-cierre">' + (S.propios[abierta.numero] ? '✅ Ya la tienes enviada · ' : '') + 'Cierra en <b data-cuenta="' + esc(abierta.cierre) + '">' + cuentaAtras(abierta.cierre) + '</b></p>' : '')
+    + (abierta ? '<button class="btn btn-oro btn-bloque mi-rellenar" id="mi-rellenar">' + (S.borradores[abierta.numero] ? '📝 Seguir con mi borrador de la J' + abierta.numero + ' (' + completos(S.borradores[abierta.numero]) + '/15)' : (S.propios[abierta.numero] ? '✏️ Editar mi quiniela de la J' : '⚽ Rellenar la J') + abierta.numero) + '</button>'
+      + '<p class="muted mi-cierre">' + (S.borradores[abierta.numero] ? (S.propios[abierta.numero] ? '📝 Cambios sin confirmar · ' : '⚠️ Sin confirmar · ') : S.propios[abierta.numero] ? '✅ Ya la tienes enviada · ' : '') + 'Cierra en <b data-cuenta="' + esc(abierta.cierre) + '">' + cuentaAtras(abierta.cierre) + '</b></p>' : '')
     + '<div class="mi-acciones"><button class="btn btn-claro btn-peq" data-mi="nombre">✏️ Cambiar nombre</button><button class="btn btn-claro btn-peq" data-mi="pin">🔑 Cambiar PIN</button><button class="btn btn-claro btn-peq" data-mi="salir">🚪 Cerrar sesión</button></div>'
     + '<div id="mi-form"></div>'
     + '<div class="mi-tabs" role="tablist">' + secciones.map(t => '<button role="tab" aria-selected="' + (t[0] === seccion) + '" class="' + (t[0] === seccion ? 'activo' : '') + '" data-sec="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>'
@@ -654,7 +658,7 @@ function abrirPerfil(seccion) {
     cerrarModal(); render(); window.scrollTo({ top: 0 });
     abrirRellenar();
   };
-  capa.querySelector('[data-mi="salir"]').onclick = () => { S.sesion = null; S.propios = {}; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); cerrarModal(); pintarCabecera(); render(); toast('Sesión cerrada'); };
+  capa.querySelector('[data-mi="salir"]').onclick = () => { S.sesion = null; S.propios = {}; S.borradores = {}; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); cerrarModal(); pintarCabecera(); render(); toast('Sesión cerrada'); };
   capa.querySelector('[data-mi="nombre"]').onclick = () => formPerfil('nombre');
   capa.querySelector('[data-mi="pin"]').onclick = () => formPerfil('pin');
 }
@@ -823,8 +827,9 @@ function vistaJornada() {
   let html = avisoInstalar() + chips + '<section class="marcador"><div class="fila"><div class="num"><small>JORNADA</small>' + j.numero + '</div><div style="flex:1"></div>' + estado + '</div>'
     + '<div class="datos">' + datos + '</div>';
   if (!j.cerrada && !j.anulada) {
-    const mio = S.sesion && S.propios[j.numero];
-    html += '<div class="cta"><button class="btn btn-oro btn-bloque" id="b-rellenar">' + (mio ? '✏️ Editar mi quiniela' : '⚽ Rellenar mi quiniela') + '</button></div>';
+    const mio = S.sesion && S.propios[j.numero], borr = S.sesion && S.borradores[j.numero];
+    html += '<div class="cta"><button class="btn btn-oro btn-bloque" id="b-rellenar">' + (borr ? '📝 Seguir con mi borrador (' + completos(borr) + '/15)' : mio ? '✏️ Editar mi quiniela' : '⚽ Rellenar mi quiniela') + '</button>'
+      + (borr ? '<p class="nota-borrador">' + (mio ? 'Tienes cambios sin confirmar: sigue valiendo la que enviaste.' : 'Sin confirmar: no cuenta hasta que la termines y la confirmes.') + '</p>' : '') + '</div>';
   }
   html += '</section>';
   if (j.anulada) html += '<div class="card"><div class="aviso" style="margin:0">🚫 <b>Esta jornada no se juega.</b> No cuenta para la clasificación.</div></div>';
@@ -967,14 +972,26 @@ function abrirRellenar() {
   const j = getJ(S.jSel);
   if (!j || j.cerrada || j.anulada) return;
   if (!S.sesion) return abrirLogin(abrirRellenar);
-  formularioPronostico(j, S.propios[j.numero] || null, 'Jornada ' + j.numero, async (valores, boton) => {
+  const borr = S.borradores[j.numero], enviada = S.propios[j.numero];
+  const aviso = borr ? (enviada ? '📝 Estás viendo tu borrador. Hasta que lo confirmes sigue valiendo la quiniela que enviaste.' : '📝 Tienes un borrador a medias. Nadie lo ve y no cuenta hasta que lo confirmes con los 15 marcados.') : '';
+  formularioPronostico(j, borr || enviada || null, 'Jornada ' + j.numero, async (valores, boton) => {
     await conCarga(boton, async () => {
       await api('guardarPronostico', { jugadorId: S.sesion.id, pin: S.sesion.pin, jornada: j.numero, signos: valores });
       S.propios[j.numero] = valores.slice();
+      delete S.borradores[j.numero];
       cerrarModal();
-      toast('¡Quiniela guardada! ⚽');
+      toast('¡Quiniela confirmada! ⚽');
       await cargarDatos(); render();
     });
+  }, {
+    aviso,
+    alBorrador: (valores, boton) => conCarga(boton, async () => {
+      await api('guardarPronostico', { jugadorId: S.sesion.id, pin: S.sesion.pin, jornada: j.numero, signos: valores, borrador: true });
+      S.borradores[j.numero] = valores.slice();
+      cerrarModal();
+      toast('📝 Borrador guardado. Recuerda confirmarla antes del cierre');
+      render();
+    })
   });
 }
 
@@ -995,6 +1012,7 @@ function abrirLogin(alEntrar) {
       const r = await api('entrarJugador', { jugadorId: id, pin });
       S.sesion = { id, pin, nombre: r.jugador.nombre };
       S.propios = r.pronosticos || {};
+      S.borradores = r.borradores || {};
       almacen.set('lupinos_sesion', S.sesion, !$('#l-rec').checked);
       pintarCabecera();
       cerrarModal();
@@ -1050,20 +1068,26 @@ function enlazarSelector(idCont, valores, opciones = {}) {
 }
 function completos(valores) { return valores.filter((v, i) => (i < 14 ? !!v : /^[012M]-[012M]$/.test(v || ''))).length; }
 
-function formularioPronostico(j, inicial, titulo, alGuardar) {
+function formularioPronostico(j, inicial, titulo, alGuardar, opciones) {
+  opciones = opciones || {};
   const valores = inicial ? inicial.slice() : new Array(15).fill('');
   abrirModal('<div class="modal-cab"><h2>' + esc(titulo) + '</h2><button class="cerrar">×</button></div>'
     + (j.cierre ? '<p class="muted" style="margin-top:-6px">Puedes cambiarla hasta el ' + esc(fmtFecha(j.cierre)) + '</p>' : '')
+    + (opciones.aviso ? '<div class="aviso-borrador">' + opciones.aviso + '</div>' : '')
     + selectorHtml(j, valores, 'sel-jug')
-    + '<div class="barra-guardar"><div class="contador" id="contador"></div><button class="btn btn-oro btn-bloque" id="b-guardar">💾 Guardar quiniela</button></div>');
+    + '<div class="barra-guardar"><div class="contador" id="contador"></div>'
+    + (opciones.alBorrador ? '<div class="botones-guardar"><button class="btn btn-claro" id="b-borrador">📝 Guardar borrador</button><button class="btn btn-oro" id="b-guardar">✅ Confirmar quiniela</button></div>'
+      : '<button class="btn btn-oro btn-bloque" id="b-guardar">💾 Guardar quiniela</button>') + '</div>');
   const actualizar = () => {
     const n = completos(valores);
-    $('#contador').textContent = n + ' de 15 marcados' + (n === 15 ? ' ✓' : '');
+    $('#contador').textContent = n + ' de 15 marcados' + (n === 15 ? ' ✓' : (opciones.alBorrador && n ? ' · faltan ' + (15 - n) + ' para confirmar' : ''));
     $('#b-guardar').disabled = n !== 15;
+    if ($('#b-borrador')) $('#b-borrador').disabled = n === 0;
   };
   enlazarSelector('sel-jug', valores, { alCambiar: actualizar });
   actualizar();
   $('#b-guardar').onclick = () => alGuardar(valores, $('#b-guardar'));
+  if (opciones.alBorrador) $('#b-borrador').onclick = () => opciones.alBorrador(valores, $('#b-borrador'));
 }
 
 /* ─────────────── Vista: Clasificación ─────────────── */
@@ -1913,8 +1937,8 @@ function demoApi(accion, p) {
   return espera(250).then(() => {
     switch (accion) {
       case 'datos': return vista(false);
-      case 'entrarJugador': { const g = jug(p.jugadorId, p.pin); const pr = {}; DB.jornadas.forEach(j => { if (j.pronosticos[g.id]) pr[j.numero] = j.pronosticos[g.id]; }); return copia({ jugador: { id: g.id, nombre: g.nombre }, pronosticos: pr, cambiarPin: !g.pinOk }); }
-      case 'guardarPronostico': { const g = jug(p.jugadorId, p.pin); const j = jor(p.jornada); if (j.anulada) throw new Error('Esta jornada no se juega.'); if (new Date(j.cierre) <= new Date()) throw new Error('La jornada ya está cerrada.'); j.pronosticos[g.id] = p.signos; log('Pronóstico', j.numero, g.nombre, p.signos.join(' '), g.nombre); return { guardado: true }; }
+      case 'entrarJugador': { const g = jug(p.jugadorId, p.pin); const pr = {}; DB.jornadas.forEach(j => { if (j.pronosticos[g.id]) pr[j.numero] = j.pronosticos[g.id]; }); const bo = {}; Object.keys(DB.borradores || {}).forEach(k => { const [n, id] = k.split('_'); if (id === g.id) bo[n] = DB.borradores[k]; }); return copia({ jugador: { id: g.id, nombre: g.nombre }, pronosticos: pr, borradores: bo, cambiarPin: !g.pinOk }); }
+      case 'guardarPronostico': { const g = jug(p.jugadorId, p.pin); const j = jor(p.jornada); if (j.anulada) throw new Error('Esta jornada no se juega.'); if (new Date(j.cierre) <= new Date()) throw new Error('La jornada ya está cerrada.'); if (p.borrador) { DB.borradores = DB.borradores || {}; DB.borradores[j.numero + '_' + g.id] = p.signos.slice(); return { borrador: true }; } j.pronosticos[g.id] = p.signos; if (DB.borradores) delete DB.borradores[j.numero + '_' + g.id]; log('Pronóstico', j.numero, g.nombre, p.signos.join(' '), g.nombre); return { guardado: true }; }
       case 'editarPerfil': { const g = jug(p.jugadorId, p.pin);
         if (p.mantenerPin) { g.pinOk = true; return { nombre: g.nombre }; }
         if (p.nuevoNombre !== undefined) { const n = String(p.nuevoNombre).trim(); if (!n) throw new Error('Pon un nombre de equipo.'); if (DB.jugadores.some(x => x.id !== g.id && x.nombre.toLowerCase() === n.toLowerCase())) throw new Error('Ya hay un equipo con ese nombre.'); g.nombre = n; }
@@ -2060,7 +2084,7 @@ function aplicarTemporada() {
   // Recupera los pronósticos propios si había sesión guardada
   if (S.sesion) {
     api('entrarJugador', { jugadorId: S.sesion.id, pin: S.sesion.pin })
-      .then(r => { S.propios = r.pronosticos || {}; if (S.vista === 'jornada') render(); })
+      .then(r => { S.propios = r.pronosticos || {}; S.borradores = r.borradores || {}; if (S.vista === 'jornada') render(); })
       .catch(() => { S.sesion = null; almacen.del('lupinos_sesion'); almacen.del('lupinos_sesion', true); pintarCabecera(); });
   }
   // App instalable: service worker mínimo (solo para poder instalarla; no guarda nada en caché)
