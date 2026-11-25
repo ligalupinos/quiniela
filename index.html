@@ -96,6 +96,9 @@ input,select,textarea{font:inherit}
 .botones-guardar .btn{white-space:nowrap;padding-left:8px;padding-right:8px}
 .aviso-borrador{background:#fff7dc;border:1px solid #f1d27a;border-radius:12px;padding:8px 10px;font-size:13px;margin-bottom:10px}
 .nota-borrador{margin:8px 0 0;font-size:12.5px;color:var(--oro);text-align:center;font-weight:600}
+.card-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.card-cab h3{margin:0}
+.card-cab .btn{white-space:nowrap;flex-shrink:0}
 .mi-rellenar{margin:2px 0 4px}
 .mi-cierre{margin:0 0 12px;text-align:center}
 .mi-acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 10px}
@@ -423,7 +426,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-20.1';
+const VERSION_WEB = '2026-11-25.1';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -844,7 +847,7 @@ function vistaJornada() {
     if (!j.cerrada && !j.anulada) html += tarjetaEnviados(j, jugs);
     const conPron = jugs.filter(g => j.pronosticos[g.id] !== undefined || g.activo);
     if (finalizada && !j.anulada) html += tarjetaPremios(j);
-    html += '<div class="card"><h3>Pronósticos</h3>' + barraResultados(j) + tablaBoleto(j, conPron) + leyenda(j) + botonWhatsApp(j) + '</div>';
+    html += '<div class="card"><div class="card-cab"><h3>Pronósticos</h3><button class="btn btn-claro btn-peq" id="b-compartir">🔗 Compartir</button></div>' + barraResultados(j) + tablaBoleto(j, conPron) + leyenda(j) + botonWhatsApp(j) + '</div>';
   }
   return html;
 }
@@ -1398,6 +1401,8 @@ function enlazar() {
   if (br) br.onclick = abrirRellenar;
   const bw = $('#b-wa');
   if (bw) bw.onclick = () => enviarWhatsApp(bw);
+  const bc = $('#b-compartir');
+  if (bc) bc.onclick = () => compartirJornada(S.jSel);
   const bp = $('#b-premios');
   if (bp) bp.onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(mensajePremios(getJ(S.jSel))), '_blank');
   const bi = $('#b-instalar');
@@ -1608,6 +1613,18 @@ function enlazarEditorJornada() {
     S.edJornada = null; S.jSel = e.numero;
     await recargarAdmin(); render(); toast(renumera ? 'J' + e.numeroOriginal + ' ahora es la J' + e.numero : 'Jornada J' + e.numero + ' guardada');
   });
+}
+
+/* ─────────────── Compartir el enlace de una jornada ─────────────── */
+async function compartirJornada(n) {
+  const url = location.origin + location.pathname + '?j=' + n;
+  const titulo = (S.datos.config.nombre || 'Liga Lupinos') + ' · Jornada ' + n;
+  if (navigator.share) {
+    try { await navigator.share({ title: titulo, text: titulo, url }); } catch (e) { /* cancelado */ }
+    return;
+  }
+  try { await navigator.clipboard.writeText(url); toast('🔗 Enlace copiado: pégalo donde quieras'); }
+  catch (e) { prompt('Copia este enlace:', url); }
 }
 
 /* ─────────────── Premios de la jornada ─────────────── */
@@ -2054,6 +2071,13 @@ function aplicarTemporada() {
     if (pos.adminTab) S.adminTab = pos.adminTab;
     if (pos.histSel) S.histSel = pos.histSel;
     document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x.dataset.vista === S.vista));
+  }
+  // Enlace compartido (?j=14): abre directamente esa jornada
+  const jEnlace = Number(new URLSearchParams(location.search).get('j'));
+  if (jEnlace > 0) {
+    S.vista = 'jornada'; S.jSel = jEnlace;
+    document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('activo', x.dataset.vista === 'jornada'));
+    history.replaceState(null, '', location.pathname);
   }
   // Arranque rápido: se enseña al momento lo que se vio la última vez y se actualiza por detrás
   const guardados = DEMO ? null : almacen.get('lupinos_datos');
