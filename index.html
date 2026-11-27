@@ -426,7 +426,7 @@ body.navidad .titulo span{color:#ffd23f}
    Si la dejas vacía, la web funciona en MODO DEMO con datos inventados.
    ════════════════════════════════════════════════════════════════ */
 /* Versión de la web: se cambia en cada publicación para avisar a quien la tenga abierta */
-const VERSION_WEB = '2026-11-25.1';
+const VERSION_WEB = '2026-11-27.1';
 
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxPNhiGb1QmM8r4mE39duL-4vkygd9sFyTYEQYbkWsTMGD_r-_LLzyg0YTE3jLGbayqFA/exec'
@@ -856,7 +856,7 @@ function tablaBoleto(j, jugs) {
   const consenso = jugs.length > 1 && Object.values(j.pronosticos).some(Array.isArray);
   let h = '<div class="tabla-wrap"><table class="boleto"><thead><tr><th class="c-partido">Partido</th><th class="c-res"><div class="vertical">Resultado</div></th>';
   jugs.forEach(g => { h += '<th class="c-jug" title="' + esc(g.nombre) + '"><div class="vertical">' + esc(g.nombre) + '</div></th>'; });
-  if (consenso) h += '<th class="c-cons" title="El más votado (el que va al Pleno al 15 oficial)"><div class="vertical">Más votado</div></th>';
+  if (consenso) h += '<th class="c-cons" title="Pleno al 15 más votado (el que va en la apuesta oficial)"><div class="vertical">Más votado</div></th>';
   h += '</tr></thead><tbody>';
   j.partidos.forEach((p, i) => {
     const r = j.resultados[i];
@@ -867,7 +867,8 @@ function tablaBoleto(j, jugs) {
       const cls = !v ? 'vacio' : !r ? '' : (v === r || (i < 14 && /^[1X2]{2,3}$/.test(r) && r.includes(v))) ? 'ok' : 'ko';
       h += '<td class="c-jug"><span class="sg ' + cls + (i === 14 ? ' pleno' : '') + '">' + (v ? esc(v) : '·') + '</span></td>';
     });
-    if (consenso) {
+    if (consenso && i < 14) h += '<td class="c-cons"></td>';   // solo se muestra el más votado del pleno al 15
+    else if (consenso) {
       const mv = masVotado(j, i);
       const txt = mv ? mv.signos.join('/') : '';
       const cls = !mv ? 'vacio' : !r ? '' : mv.signos.includes(r) ? 'ok' : 'ko';
